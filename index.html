@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Device Preview Lab</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="hero">
+        <div class="hero__copy">
+          <p class="eyebrow">Standalone Preview Tool</p>
+          <h1>Device Preview Lab</h1>
+          <p class="hero__text">
+            Load any running app URL and inspect it side by side in computer,
+            tablet, Android flagship, and iPhone-sized frames.
+          </p>
+        </div>
+        <div class="hero__note">
+          <span class="hero__pill">4-up grid</span>
+          <span class="hero__pill">saved presets</span>
+          <span class="hero__pill">cross-origin safe</span>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="control-panel">
+          <form id="preview-form" class="control-bar" novalidate>
+            <label class="field field--url">
+              <span class="field__label">Target URL</span>
+              <input
+                id="target-url"
+                name="targetUrl"
+                type="url"
+                inputmode="url"
+                spellcheck="false"
+                placeholder="http://127.0.0.1:8080"
+                autocomplete="off"
+              />
+            </label>
+
+            <label class="field field--slider">
+              <span class="field__label">Zoom</span>
+              <input
+                id="zoom-slider"
+                type="range"
+                min="60"
+                max="130"
+                step="5"
+                value="100"
+              />
+              <span id="zoom-value" class="field__value">100%</span>
+            </label>
+
+            <div class="actions">
+              <button type="submit" class="button button--primary">
+                Load previews
+              </button>
+              <button type="button" id="reload-all" class="button">
+                Reload all
+              </button>
+              <button type="button" id="open-target" class="button">
+                Open target
+              </button>
+            </div>
+          </form>
+
+          <div class="status-row">
+            <p id="status-message" class="status-message" role="status">
+              Ready. Load a local or remote URL to preview it in four device
+              classes.
+            </p>
+            <p class="status-hint">
+              Use the launcher to set this automatically, or paste any local
+              app URL.
+            </p>
+          </div>
+        </section>
+
+        <section
+          id="device-grid"
+          class="device-grid"
+          aria-label="Device preview grid"
+        ></section>
+      </main>
+    </div>
+
+    <template id="device-card-template">
+      <article class="device-card">
+        <header class="device-card__header">
+          <div class="device-card__title-block">
+            <p class="device-card__eyebrow"></p>
+            <h2 class="device-card__title"></h2>
+          </div>
+
+          <div class="device-card__controls">
+            <span class="device-card__viewport"></span>
+            <button type="button" class="device-card__focus">
+              Focus
+            </button>
+            <button type="button" class="device-card__rotate">
+              Rotate
+            </button>
+          </div>
+        </header>
+
+        <div class="device-stage">
+          <div class="device-shell">
+            <div class="shell-chrome"></div>
+            <div class="device-canvas">
+              <iframe
+                class="device-frame"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
+                title=""
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </article>
+    </template>
+
+    <div
+      id="focus-overlay"
+      class="focus-overlay"
+      hidden
+      aria-hidden="true"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="focus-title"
+    >
+      <div class="focus-overlay__backdrop"></div>
+      <section class="focus-overlay__panel">
+        <header class="focus-overlay__header">
+          <div class="focus-overlay__title-block">
+            <p id="focus-eyebrow" class="device-card__eyebrow"></p>
+            <h2 id="focus-title" class="focus-overlay__title"></h2>
+            <p id="focus-target" class="focus-overlay__target"></p>
+          </div>
+
+          <div class="focus-overlay__actions">
+            <span id="focus-viewport" class="device-card__viewport"></span>
+            <button type="button" id="focus-rotate" class="button">
+              Rotate
+            </button>
+            <button type="button" id="focus-reload" class="button">
+              Reload
+            </button>
+            <button type="button" id="focus-fullscreen" class="button">
+              Full screen
+            </button>
+            <button type="button" id="focus-close" class="button button--primary">
+              Close
+            </button>
+          </div>
+        </header>
+
+        <div id="focus-stage" class="device-stage device-stage--focus">
+          <div id="focus-shell" class="device-shell">
+            <div class="shell-chrome"></div>
+            <div id="focus-canvas" class="device-canvas">
+              <iframe
+                id="focus-frame"
+                class="device-frame"
+                loading="lazy"
+                referrerpolicy="no-referrer"
+                sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
+                title="Focused device preview"
+              ></iframe>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>

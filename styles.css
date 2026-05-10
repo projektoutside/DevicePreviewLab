@@ -1,0 +1,604 @@
+:root {
+  color-scheme: dark;
+  --bg: #081018;
+  --bg-deep: #050a11;
+  --panel: rgba(10, 21, 34, 0.86);
+  --panel-strong: rgba(12, 27, 42, 0.94);
+  --panel-soft: rgba(18, 39, 59, 0.78);
+  --line: rgba(160, 193, 214, 0.18);
+  --line-strong: rgba(205, 225, 236, 0.3);
+  --text: #f4f1e8;
+  --text-soft: #bfd0dc;
+  --text-muted: #7c93a4;
+  --accent: #ddb576;
+  --accent-strong: #f4c985;
+  --accent-soft: rgba(221, 181, 118, 0.18);
+  --android: #a8cf8c;
+  --apple: #b3c8ea;
+  --desktop: #f3d6ac;
+  --tablet: #9fd1cb;
+  --shadow: 0 22px 60px rgba(1, 7, 14, 0.48);
+  --radius-xl: 28px;
+  --radius-lg: 22px;
+  --radius-md: 16px;
+  font-family: "Aptos", "Segoe UI Variable Display", "Trebuchet MS",
+    sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(39, 88, 122, 0.3), transparent 36%),
+    radial-gradient(circle at top right, rgba(130, 90, 38, 0.24), transparent 28%),
+    linear-gradient(180deg, #0a131d 0%, #071019 54%, #050910 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(circle at center, black 46%, transparent 100%);
+}
+
+.app-shell {
+  width: min(1700px, calc(100vw - 40px));
+  margin: 20px auto 40px;
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 28px;
+  padding: 28px 32px;
+  background: linear-gradient(
+    145deg,
+    rgba(8, 17, 26, 0.92),
+    rgba(9, 26, 39, 0.9)
+  );
+  border: 1px solid var(--line);
+  border-radius: 32px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -35% auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(221, 181, 118, 0.2), transparent 64%);
+}
+
+.eyebrow,
+.device-card__eyebrow {
+  margin: 0 0 10px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  color: var(--accent-strong);
+}
+
+h1,
+.device-card__title {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia,
+    serif;
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  font-size: clamp(2rem, 2.8vw, 3.2rem);
+  line-height: 0.95;
+}
+
+.hero__text {
+  max-width: 760px;
+  margin: 16px 0 0;
+  color: var(--text-soft);
+  line-height: 1.6;
+  font-size: 1rem;
+}
+
+.hero__note {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  justify-content: flex-end;
+  gap: 10px;
+  max-width: 320px;
+  z-index: 1;
+}
+
+.hero__pill {
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-soft);
+  font-size: 0.82rem;
+}
+
+.workspace {
+  margin-top: 22px;
+  display: grid;
+  gap: 18px;
+}
+
+.control-panel {
+  padding: 22px 24px;
+  border-radius: 28px;
+  background: linear-gradient(180deg, var(--panel), var(--panel-strong));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.control-bar {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.5fr) minmax(180px, 0.6fr) auto;
+  gap: 16px;
+  align-items: end;
+}
+
+.field {
+  display: grid;
+  gap: 10px;
+}
+
+.field__label {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.field__value {
+  justify-self: end;
+  color: var(--accent-strong);
+  font-size: 0.85rem;
+}
+
+.field--slider {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.field--slider .field__label {
+  grid-column: 1 / -1;
+}
+
+input[type="url"],
+input[type="range"],
+.button {
+  appearance: none;
+  border: none;
+  font: inherit;
+}
+
+input[type="url"] {
+  width: 100%;
+  padding: 15px 16px;
+  border-radius: 16px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+input[type="url"]:focus-visible,
+.button:focus-visible,
+.device-card__rotate:focus-visible,
+.device-card__focus:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    rgba(221, 181, 118, 0.92),
+    rgba(168, 207, 140, 0.72)
+  );
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text);
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 4px rgba(221, 181, 118, 0.12);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button,
+.device-card__rotate,
+.device-card__focus {
+  padding: 14px 16px;
+  border-radius: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.button:hover,
+.device-card__rotate:hover,
+.device-card__focus:hover {
+  transform: translateY(-1px);
+  border-color: var(--line-strong);
+}
+
+.button--primary {
+  background: linear-gradient(135deg, #d2aa6a, #efcb8b);
+  color: #182129;
+  font-weight: 700;
+}
+
+.status-row {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.status-message,
+.status-hint {
+  margin: 0;
+}
+
+.status-message {
+  color: var(--text-soft);
+}
+
+.status-message[data-state="error"] {
+  color: #ffb3a4;
+}
+
+.status-message[data-state="success"] {
+  color: #c9e5b4;
+}
+
+.status-hint {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+code {
+  font-family: "Cascadia Code", "Consolas", monospace;
+  color: var(--accent-strong);
+}
+
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 18px;
+}
+
+.device-card {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 14px;
+  padding: 18px;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(180deg, var(--panel), rgba(8, 19, 31, 0.94));
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  min-height: 500px;
+}
+
+.device-card[data-accent="desktop"] {
+  --card-accent: var(--desktop);
+}
+
+.device-card[data-accent="tablet"] {
+  --card-accent: var(--tablet);
+}
+
+.device-card[data-accent="android"] {
+  --card-accent: var(--android);
+}
+
+.device-card[data-accent="apple"] {
+  --card-accent: var(--apple);
+}
+
+.device-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: start;
+}
+
+.device-card__title {
+  font-size: 1.5rem;
+}
+
+.device-card__viewport {
+  color: var(--card-accent, var(--accent-strong));
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.device-card__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
+  align-items: center;
+}
+
+.device-card__rotate[hidden] {
+  display: none;
+}
+
+.device-card__focus {
+  border-color: rgba(221, 181, 118, 0.18);
+  background: rgba(221, 181, 118, 0.08);
+}
+
+.device-stage {
+  position: relative;
+  min-height: 420px;
+  height: clamp(420px, 56vh, 620px);
+  padding: 8px;
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.03), transparent 35%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(255, 255, 255, 0.01));
+  overflow: hidden;
+}
+
+.device-shell {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--shell-width);
+  height: var(--shell-height);
+  transform: translate(-50%, -50%);
+  transition:
+    width 180ms ease,
+    height 180ms ease;
+}
+
+.device-shell[data-frame-kind="browser"] {
+  border-radius: 22px;
+  background: linear-gradient(180deg, #dde7ef, #9fb3c1 10%, #f8fbff 10.1%);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.32);
+  overflow: hidden;
+}
+
+.device-shell[data-frame-kind="browser"] .shell-chrome {
+  height: 54px;
+  background:
+    radial-gradient(circle at 26px 27px, #ff6059 0 6px, transparent 7px),
+    radial-gradient(circle at 48px 27px, #ffbd2e 0 6px, transparent 7px),
+    radial-gradient(circle at 70px 27px, #28c840 0 6px, transparent 7px),
+    linear-gradient(180deg, #e6edf4, #cad7e1);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.device-shell[data-frame-kind="browser"] .device-canvas {
+  left: 0;
+  top: 54px;
+  width: var(--frame-width);
+  height: var(--frame-height);
+  transform: none;
+  border-radius: 0 0 18px 18px;
+}
+
+.device-shell[data-frame-kind="tablet"],
+.device-shell[data-frame-kind="android-phone"],
+.device-shell[data-frame-kind="iphone"] {
+  padding: 16px;
+  border-radius: 42px;
+  background: linear-gradient(160deg, #0e131a, #1d2430 48%, #0f151d 100%);
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.36);
+}
+
+.device-shell[data-frame-kind="tablet"] .shell-chrome,
+.device-shell[data-frame-kind="android-phone"] .shell-chrome,
+.device-shell[data-frame-kind="iphone"] .shell-chrome {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+  width: 84px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.device-shell[data-frame-kind="iphone"] .shell-chrome {
+  top: 10px;
+  width: 118px;
+  height: 28px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #111722, #232b38);
+}
+
+.device-shell[data-frame-kind="android-phone"] .shell-chrome::after {
+  content: "";
+  position: absolute;
+  right: -18px;
+  top: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.24);
+}
+
+.device-canvas {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--frame-width);
+  height: var(--frame-height);
+  transform: translate(-50%, -50%);
+  transform-origin: center center;
+  border-radius: var(--frame-radius);
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.08);
+}
+
+.device-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: linear-gradient(180deg, #eef3f7, #f9fbfc);
+}
+
+.focus-overlay[hidden] {
+  display: none;
+}
+
+.focus-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.focus-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top, rgba(39, 88, 122, 0.18), transparent 32%),
+    rgba(3, 8, 14, 0.86);
+  backdrop-filter: blur(18px);
+}
+
+.focus-overlay__panel {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 1760px);
+  height: min(100%, calc(100vh - 36px));
+  padding: 18px;
+  display: grid;
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  border-radius: 30px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(7, 16, 26, 0.96), rgba(5, 12, 21, 0.98));
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.5);
+}
+
+.focus-overlay__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+}
+
+.focus-overlay__title {
+  margin: 0;
+  font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia,
+    serif;
+  font-size: clamp(1.8rem, 2.3vw, 2.6rem);
+}
+
+.focus-overlay__target {
+  margin: 10px 0 0;
+  color: var(--text-muted);
+  font-size: 0.96rem;
+}
+
+.focus-overlay__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+}
+
+.device-stage--focus {
+  min-height: 0;
+  height: 100%;
+  padding: 6px;
+  border-radius: 28px;
+}
+
+body.focus-mode {
+  overflow: hidden;
+}
+
+@media (max-width: 1180px) {
+  .control-bar {
+    grid-template-columns: 1fr;
+  }
+
+  .status-row {
+    flex-direction: column;
+    align-items: start;
+  }
+
+  .focus-overlay__header {
+    flex-direction: column;
+  }
+
+  .focus-overlay__actions {
+    justify-content: start;
+  }
+}
+
+@media (max-width: 820px) {
+  .app-shell {
+    width: min(100vw - 20px, 1700px);
+    margin: 10px auto 24px;
+  }
+
+  .hero {
+    padding: 22px;
+    flex-direction: column;
+  }
+
+  .hero__note {
+    justify-content: start;
+  }
+
+  .device-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .device-card {
+    min-height: 460px;
+  }
+}
