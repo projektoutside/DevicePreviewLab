@@ -41,7 +41,11 @@
     if (!libraries) libraries = (async () => {
       const style = document.createElement('link');
       style.rel = 'stylesheet'; style.href = '/vendor/xterm.css';
-      document.head.appendChild(style);
+      await new Promise((resolve, reject) => {
+        style.onload = resolve;
+        style.onerror = () => { style.remove(); reject(new Error('Terminal styles could not load. Try again.')); };
+        document.head.appendChild(style);
+      });
       for (const source of ['/vendor/xterm.js', '/vendor/addon-fit.js']) {
         await new Promise((resolve, reject) => {
           const script = document.createElement('script'); script.src = source;
@@ -60,8 +64,12 @@
   }
 
   function fit(view) {
-    if (!view.terminal || panel.hidden || view.element.hidden) return;
-    view.fit.fit();
+    if (!view.terminal || panel.hidden || view.element.hidden || view.fitFrame) return;
+    view.fitFrame = requestAnimationFrame(() => {
+      view.fitFrame = null;
+      if (!views.has(view.id) || panel.hidden || view.element.hidden) return;
+      view.fit.fit();
+    });
   }
 
   function select(id, focus = true) {
@@ -103,6 +111,7 @@
   }
 
   function removeView(view) {
+    if (view.fitFrame) cancelAnimationFrame(view.fitFrame);
     view.observer?.disconnect(); view.terminal?.dispose();
     view.frame?.setAttribute('src', 'about:blank');
     view.button.remove(); view.element.remove(); views.delete(view.id);
@@ -125,13 +134,19 @@
           try { await api('close', { id: session.id }); }
           catch (error) { setStatus(error.message, true); close.disabled = false; }
         });
-        toolbar.append(title, close);
+        const latest = document.createElement('button'); latest.className = 'button button--small';
+        latest.type = 'button'; latest.textContent = 'Latest output';
+        latest.title = 'Return to the latest output and command prompt';
+        latest.addEventListener('click', () => { view.terminal.scrollToBottom(); view.terminal.focus(); });
+        toolbar.append(title, latest, close);
         const host = document.createElement('div'); host.className = 'terminal-screen';
+        // FitAddon measures its direct parent. Keep the safety padding outside that box.
+        const mount = document.createElement('div'); mount.className = 'terminal-mount'; host.appendChild(mount);
         view.element.append(toolbar, host); view.title = title;
         view.terminal = new Terminal({ cursorBlink: true, fontSize: 14, fontFamily: 'Consolas, "Cascadia Code", monospace',
           scrollback: 3000, theme: { background: '#080e17', foreground: '#d7e1ef', cursor: '#58c5cd', selectionBackground: '#31516b' } });
         view.fit = new FitAddon.FitAddon(); view.terminal.loadAddon(view.fit);
-        view.terminal.open(host);
+        view.terminal.open(mount);
         view.terminal.onData(data => {
           for (let start = 0; start < data.length;) {
             let end = Math.min(start + 4096, data.length);
@@ -145,6 +160,7 @@
         });
         view.terminal.onResize(({ cols, rows }) => send({ type: 'resize', id: session.id, cols, rows }));
         view.observer = new ResizeObserver(() => fit(view)); view.observer.observe(host);
+        document.fonts.ready.then(() => fit(view));
       }
       view.session = session;
       view.button.textContent = `${session.name} · ${session.status === 'running' ? 'PowerShell' : 'Exited'}`;

@@ -462,7 +462,7 @@ function syncCardScale(deviceId) {
     maxScale: 1,
   });
   const zoomScale = getActiveTab().zoomPercent / 100;
-  const finalScale = Math.max(0.28, Math.min(fitScale * zoomScale, 1.35));
+  const finalScale = Math.max(0.01, Math.min(fitScale * zoomScale, 1.35));
 
   shell.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
 }
@@ -1023,7 +1023,6 @@ function addBoardTile(rawUrl, deviceId) {
   persistWorkspace();
   renderBoardTile(tile);
   bringBoardTileToFront(tile.id, { persist: false });
-  updateBoardCanvasHeight();
   elements.boardUrl.value = '';
   setBoardStatus(`Added ${tile.name} as ${preset.label}. Drag the header to move it, or drag the corner to resize.`, 'success');
   return true;
@@ -1046,7 +1045,6 @@ function removeBoardTile(tileId) {
     closeFocusPreview();
   }
   persistWorkspace();
-  updateBoardCanvasHeight();
   setBoardStatus(`Removed ${removed.name} from the board.`, 'success');
 }
 
@@ -1095,7 +1093,6 @@ function renderBoard() {
   getBoardTiles().forEach((tile, index) => {
     state.boardTileRefs.get(tile.id).element.style.zIndex = String(10 + index);
   });
-  updateBoardCanvasHeight();
   syncAllBoardTileScales();
 }
 
@@ -1327,7 +1324,6 @@ function handleBoardDragMove(event) {
   ref.element.style.top = `${ref.tile.y}px`;
   ref.element.style.width = `${ref.tile.width}px`;
   ref.element.style.height = `${ref.tile.height}px`;
-  updateBoardCanvasHeight();
   syncBoardTileScale(drag.tileId);
 }
 
@@ -1351,7 +1347,6 @@ function endBoardDrag(event) {
     ref.element.classList.remove('board-tile--dragging', 'board-tile--resizing');
   }
   persistWorkspace();
-  updateBoardCanvasHeight();
   syncBoardTileScale(drag.tileId);
 }
 
@@ -1376,14 +1371,6 @@ function bringBoardTileToFront(tileId, options = {}) {
   if (options.persist !== false) {
     persistWorkspace();
   }
-}
-
-function updateBoardCanvasHeight() {
-  let maxBottom = 560;
-  state.boardTileRefs.forEach(({ tile }) => {
-    maxBottom = Math.max(maxBottom, tile.y + tile.height + 48);
-  });
-  elements.boardCanvas.style.height = `${Math.min(3200, Math.max(560, maxBottom))}px`;
 }
 
 function setBoardStatus(message, stateName = 'info') {

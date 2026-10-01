@@ -39,3 +39,36 @@ Both executables were rebuilt in the application directory. Task-owned browser
 sessions, app windows, shells, and servers were closed after verification.
 The user's pre-existing Lab session and other resources were left running;
 reopening the updated launcher activates the new backend.
+
+## Compact workspace and terminal visibility follow-up — 2026-10-01
+
+Fixed Terminal Hall's fitting mismatch: its padded outer container was measured
+as fully usable terminal space. An unpadded inner mount now gives FitAddon the
+actual available dimensions, with 16 px reserved below the last row. Fits are
+coalesced per animation frame, and terminal creation waits for its stylesheet.
+The Latest output control restores the bottom of the terminal's history.
+
+The main workspace now fits the viewport. Grid frames scale into the remaining
+height; board tiles and terminal history scroll within their own panels. Compact
+controls and horizontally scrolling tab strips keep the header from growing.
+At 1500×980, the grid starts at 159 px instead of 293 px, saving 134 px above it.
+
+Validation for this follow-up:
+
+- `npm test`: 8 tests passed; lint, syntax, whitespace, and audit passed.
+- Preview browser regression: 24 checks passed.
+- Terminal Hall browser regression: 22 checks passed, including a fully visible
+  bottom-row PowerShell prompt after long output, padding at five window sizes,
+  enlarged UI zoom, scrollback, Latest output, tab switching, and reconnect.
+- Layout browser regression: 27 checks passed at 1920×1080, 1500×980, 1280×720,
+  1024×640, and 390×844. All modes fit the main page; complete device shells fit
+  their stages at desktop sizes. Large boards and many tabs scroll internally.
+- Screenshots inspected: `output/playwright/compact-workspace.png` and
+  `output/playwright/terminal-bottom-safety.png`.
+- Both GUI executables compiled to `.logs` with warnings treated as errors.
+  Native launcher normal/forced cleanup fixture passed. The installed launcher
+  also passed actual workstation shutdown checks with the updated app files.
+
+The existing .exe loads the updated app files; refresh the Lab page to apply
+this layout while keeping running terminal sessions. Task-owned test sessions
+and helpers were closed; the user's existing Lab and terminals stayed running.

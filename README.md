@@ -11,6 +11,11 @@ running web app URL in four side-by-side device classes:
 It does not build, modify, or bundle the app it previews. It only loads the
 target URL in iframe viewports.
 
+The workspace fills the window without a main page scrollbar. Compact controls
+leave more room for previews. Terminal history, long tab lists, board tiles, and
+preview content scroll within their own panels; smaller windows can scroll the
+device grid internally. Device frames scale to the available space.
+
 Every initial load, URL submission, grid reload, and focused-device reload uses
 a unique `__dpl_fresh` query value. This bypasses normal document-cache reuse
 without changing the clean target URL saved by Device Preview Lab. All four
@@ -59,7 +64,9 @@ your shells. You can return to a device preview and keep terminals running.
   your project and click **Open terminal here** to start interactive PowerShell
   in that exact folder. The new session comes to the front automatically.
 - Run commands, development servers, interactive tools, Ctrl+C, and clipboard
-  paste directly in the terminal. The display fits the available panel size.
+  paste directly in the terminal. The display fits the available panel size,
+  keeping safety space below the last row. **Latest output** returns to the
+  newest output and command prompt after browsing earlier lines.
 - Running local HTTP servers are detected across listening ports, including
   ports outside the usual development-port list. Their tabs show a live preview
   and process details. Detection refreshes every 15 seconds while Hall is visible.
