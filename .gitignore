@@ -2,5 +2,10 @@
 *.log
 .verification-*.log
 node_modules/
+.browser-profiles/
+.playwright-cli/
+output/
 .DS_Store
 Thumbs.db
+/Start-DevicePreviewLab.exe
+/Select-DevicePreviewFolder.exe

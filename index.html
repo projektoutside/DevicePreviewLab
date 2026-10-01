@@ -4,41 +4,94 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Device Preview Lab</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2311273a'/%3E%3Crect x='8' y='4' width='16' height='24' rx='3' fill='%2358c5cd'/%3E%3C/svg%3E" />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <div class="app-shell">
-      <header class="hero">
-        <div class="hero__copy">
-          <p class="eyebrow">Standalone Preview Tool</p>
-          <h1>Device Preview Lab</h1>
-          <p class="hero__text">
-            Load any running app URL and inspect it side by side in computer,
-            tablet, Android flagship, and iPhone-sized frames.
-          </p>
-        </div>
-        <div class="hero__note">
-          <span class="hero__pill">4-up grid</span>
-          <span class="hero__pill">saved presets</span>
-          <span class="hero__pill">cross-origin safe</span>
-        </div>
-      </header>
-
       <main class="workspace">
-        <section class="control-panel">
+        <section class="topbar" aria-label="Workspace controls">
+          <div class="tab-strip">
+            <div
+              id="tab-list"
+              class="tab-list"
+              role="tablist"
+              aria-label="Preview tabs"
+            ></div>
+            <button type="button" id="terminal-hall-tab" class="button terminal-hall-tab" aria-pressed="false" aria-controls="terminal-hall">
+              Terminal Hall
+            </button>
+            <button
+              type="button"
+              id="tab-add"
+              class="button button--small"
+              title="Create a new preview tab"
+            >
+              + New tab
+            </button>
+          </div>
+
+          <div
+            class="mode-toggle"
+            role="group"
+            aria-label="Preview mode"
+          >
+            <button
+              type="button"
+              id="mode-grid"
+              class="mode-toggle__button"
+              aria-pressed="true"
+              title="Show the four-device grid for the active tab"
+            >
+              Device grid
+            </button>
+            <button
+              type="button"
+              id="mode-board"
+              class="mode-toggle__button"
+              aria-pressed="false"
+              title="Show every saved server together on one free-form board"
+            >
+              All in One
+            </button>
+          </div>
+        </section>
+
+        <section class="control-panel" id="grid-controls">
           <form id="preview-form" class="control-bar" novalidate>
-            <label class="field field--url">
-              <span class="field__label">Target URL</span>
-              <input
-                id="target-url"
-                name="targetUrl"
-                type="url"
-                inputmode="url"
-                spellcheck="false"
-                placeholder="http://127.0.0.1:8080"
-                autocomplete="off"
-              />
-            </label>
+            <div class="field field--url">
+              <span class="field__label" id="target-url-label">Target URL</span>
+              <div class="url-picker">
+                <input
+                  id="target-url"
+                  name="targetUrl"
+                  type="url"
+                  inputmode="url"
+                  spellcheck="false"
+                  placeholder="http://127.0.0.1:8080"
+                  autocomplete="off"
+                  aria-labelledby="target-url-label"
+                  list="local-servers-list"
+                />
+                <select
+                  id="target-pick"
+                  class="url-picker__select"
+                  aria-label="Pick a detected local server"
+                  title="Pick a detected local server"
+                >
+                  <option value="">Detect…</option>
+                </select>
+                <button
+                  type="button"
+                  id="target-scan"
+                  class="button button--small url-picker__scan"
+                  title="Scan for running local servers"
+                >
+                  Scan
+                </button>
+              </div>
+              <datalist id="local-servers-list"></datalist>
+            </div>
 
             <label class="field field--slider">
               <span class="field__label">Zoom</span>
@@ -55,10 +108,10 @@
 
             <div class="actions">
               <button type="submit" class="button button--primary">
-                Load previews
+                Load fresh previews
               </button>
               <button type="button" id="reload-all" class="button">
-                Reload all
+                Fresh reload all
               </button>
               <button type="button" id="open-target" class="button">
                 Open target
@@ -72,8 +125,8 @@
               classes.
             </p>
             <p class="status-hint">
-              Use the launcher to set this automatically, or paste any local
-              app URL.
+              Every frame navigation gets a unique cache-bypass URL while the
+              saved target URL stays clean.
             </p>
           </div>
         </section>
@@ -83,6 +136,84 @@
           class="device-grid"
           aria-label="Device preview grid"
         ></section>
+
+        <section id="terminal-hall" class="terminal-hall" aria-label="Terminal Hall" hidden>
+          <header class="terminal-hall__header">
+            <div><p class="field__label">Your local workstation</p><h2>Terminal Hall</h2></div>
+            <div class="actions">
+              <button type="button" id="terminal-refresh" class="button">Refresh servers</button>
+              <button type="button" id="terminal-add" class="button button--primary" aria-label="Choose folder and open terminal" title="Choose a folder and open PowerShell here">+ New terminal</button>
+            </div>
+          </header>
+          <p id="terminal-status" class="status-message" role="status">Connecting to the local workstation…</p>
+          <div id="terminal-tabs" class="terminal-tabs" role="tablist" aria-label="Terminal and server sessions"></div>
+          <div id="terminal-panels" class="terminal-panels">
+            <div id="terminal-empty" class="terminal-empty"><h3>A home for your servers and shells</h3><p>Choose + New terminal to browse to a project folder. Running web servers appear here automatically.</p></div>
+          </div>
+          <p class="terminal-hall__hint">New terminals are interactive and stay running while you switch tabs. Existing servers show a live preview; their original console stays in its current terminal. Closing the Lab stops terminals started here.</p>
+        </section>
+
+        <section
+          id="board-panel"
+          class="board-panel"
+          aria-label="All in One board"
+          hidden
+        >
+          <form id="board-add-form" class="board-add" novalidate>
+            <div class="field field--url board-add__url">
+              <span class="field__label" id="board-url-label">Server URL</span>
+              <div class="url-picker">
+                <input
+                  id="board-url"
+                  name="boardUrl"
+                  type="url"
+                  inputmode="url"
+                  spellcheck="false"
+                  placeholder="http://127.0.0.1:3000"
+                  autocomplete="off"
+                  aria-labelledby="board-url-label"
+                  list="local-servers-list"
+                />
+                <select
+                  id="board-pick"
+                  class="url-picker__select"
+                  aria-label="Pick a detected local server for the board"
+                  title="Pick a detected local server for the board"
+                >
+                  <option value="">Detect…</option>
+                </select>
+                <button
+                  type="button"
+                  id="board-scan"
+                  class="button button--small url-picker__scan"
+                  title="Scan for running local servers"
+                >
+                  Scan
+                </button>
+              </div>
+            </div>
+
+            <label class="field board-add__device">
+              <span class="field__label">Device</span>
+              <select id="board-device" name="boardDevice"></select>
+            </label>
+
+            <div class="board-add__actions">
+              <button type="submit" class="button button--primary">
+                Add server tile
+              </button>
+              <button type="button" id="board-reload" class="button">
+                Fresh reload board
+              </button>
+            </div>
+          </form>
+
+          <p id="board-status" class="status-message" role="status">
+            Add any running local server URL and choose a device frame for it.
+            Tiles can be dragged and resized anywhere on this board.
+          </p>
+          <div id="board-canvas" class="board-canvas"></div>
+        </section>
       </main>
     </div>
 
@@ -111,7 +242,7 @@
             <div class="device-canvas">
               <iframe
                 class="device-frame"
-                loading="lazy"
+                loading="eager"
                 referrerpolicy="no-referrer"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
                 title=""
@@ -146,7 +277,7 @@
               Rotate
             </button>
             <button type="button" id="focus-reload" class="button">
-              Reload
+              Fresh reload
             </button>
             <button type="button" id="focus-fullscreen" class="button">
               Full screen
@@ -164,7 +295,7 @@
               <iframe
                 id="focus-frame"
                 class="device-frame"
-                loading="lazy"
+                loading="eager"
                 referrerpolicy="no-referrer"
                 sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups allow-downloads"
                 title="Focused device preview"
@@ -175,6 +306,7 @@
       </section>
     </div>
 
+    <script src="./terminal-hall.js"></script>
     <script src="./app.js"></script>
   </body>
 </html>
