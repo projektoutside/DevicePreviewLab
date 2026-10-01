@@ -103,3 +103,94 @@ Passed validation:
 Native tests ran against the existing .exe with the updated application files.
 The current running backend requires a Lab restart to load the new scanner.
 The user's app/terminals were preserved; only task-owned fixtures were closed.
+
+## Preview zoom and resize follow-up — 2026-10-01
+
+Added independent preview zoom in every box, global device preview zoom, and
+whole-board layout zoom with Fit board. Device viewport dimensions remain fixed;
+zoom and resizing preserve the loaded page. Enlarged previews scroll internally.
+Saved zoom preferences migrate safely from existing workspaces.
+
+Resize events are grouped into animation frames. Final dimensions are flushed on
+pointer cancellation, capture is released, and scaled board coordinates are used
+for dragging/resizing. The corner handle also supports arrow-key resizing. New
+tiles fit the available board, including cascade offsets; old negative positions
+are normalized into reachable positions. Hidden modes defer initial navigation.
+URL editing updates an existing tile without losing its layout; Open checks its
+target directly. Main-page scrolling remains disabled.
+
+Passed validation:
+
+- 18 automated tests, no skips; lint, syntax and whitespace checks.
+- Browser checks: preview 24, Terminal Hall 22, layout 28, discovery 17, zoom 38
+  (129 total). The zoom checks exercise actual target content and clicks, a burst
+  of 100 pointer events, cancellation cleanup, scaled dragging/resizing, keyboard
+  resizing, persistence, internal scrollbars, hidden loads, and URL edits.
+- Both GUI executables compiled to `.logs/zoom-validated.exe` and its companion
+  picker with compiler warnings treated as errors. Normal/forced launcher fixture
+  checks passed; the installed executable passed actual workstation lifecycle
+  checks, including terminal command-child cleanup.
+- Inspected browser screenshots `output/playwright/board-zoom.png` and
+  `output/playwright/compact-workspace.png`. Layout checks cover 1920×1080,
+  1500×980, 1280×720, 1024×640 and 390×844.
+
+Remaining target-specific issue: the live Flutter development host was blank
+both inside All in One and in a separate direct browser session. Both documents
+loaded 811 scripts but produced zero Flutter views/canvases. There were no page
+exceptions during the embedded startup check. Working HTML applications render
+and remain interactive in the updated board. The target's startup failure is
+outside this repository; its code, data and process were left untouched. This
+does not establish that the user's existing native window was visually inspected.
+
+The installed .exe loads the updated frontend files. Refreshing the Lab applies
+these changes while preserving backend terminal sessions. Main integration is
+held until the live target's loading issue is resolved, consistent with the
+requested release gate.
+
+## Flutter white-preview fix and final integration — 2026-10-01
+
+Resolved the live Nikhom host's white screen at `http://127.0.0.1:61655/`.
+All 803 Dart modules loaded, but DWDS withheld the startup signal from additional
+browser instances. Calling the generated main entrypoint rendered the actual app.
+The four-device grid exposed a second failure: each DDC loader queued hundreds
+of scripts with a request pool of 1000, producing `ERR_INSUFFICIENT_RESOURCES`.
+
+Added an opt-in, loopback-only debug bootstrap helper and an idempotent installer.
+The helper caps the SDK's request pool at 32 before library loading, waits for
+loaded modules, gives the debugger its normal startup opportunity, and starts
+the app once if needed. A delayed debugger signal cannot duplicate `runApp`;
+SDK-managed restarts remain allowed. The temporary configuration accessor is
+restored to the SDK's normal plain property. Release builds and unmarked pages
+are unchanged. Open from the Lab now carries the same explicit preview marker.
+
+Installed the helper into Nikhom's `web/flutter_bootstrap.js`, preserving its
+custom code and all other project work. The exact original backup is under
+`.logs/flutter-bootstrap-backups/Nikhom Financials-20261001T233429655.js`.
+The existing Flutter server immediately served the updated bootstrap.
+
+Passed validation:
+
+- 25 automated tests, no skips, including startup races, concurrency adaptation,
+  inactive release/remote paths, timeout cleanup, and installer preservation.
+- Lint, JavaScript syntax and whitespace checks.
+- Browser regression checks: preview 24, Terminal Hall 22, layout 28, zoom 38,
+  discovery 17 (129 total).
+- 19 additional live Flutter checks: actual All in One, all four device frames,
+  Terminal Hall, reload, Open, zoom, keyboard resize, duplicate-start prevention,
+  and no outer layout scrollbars. All four loaders used the bounded request pool;
+  startup produced no page exceptions or resource-exhaustion errors.
+- Inspected `output/playwright/flutter-board-working.png` and
+  `output/playwright/flutter-grid-working.png`, showing real Nikhom content.
+  Enabled Flutter accessibility in the isolated browser and clicked Settings,
+  then closed the resulting details dialog to verify the rendered UI responds.
+- Rebuilt both installed GUI executables with warnings treated as errors.
+  The installed launcher passed normal/forced cleanup fixtures and actual
+  workstation lifecycle checks, including terminal-shell and command-child
+  cleanup on browser exit and forced launcher exit.
+
+The original user Lab and its Flutter host stopped after live validation; they
+were not restarted during final checks. The live-target screenshots and checks
+precede that shutdown. Native lifecycle tests used their own ports and resources;
+Windows native-window visual inspection is not claimed. Nikhom business/data
+workflows were outside this preview-loading fix. Task-owned test resources were
+closed when verification finished.

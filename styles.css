@@ -407,7 +407,7 @@ code {
 
 .device-card {
   display: grid;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 6px;
   padding: 8px;
   border-radius: var(--radius-xl);
@@ -491,16 +491,15 @@ code {
 .board-tile {
   position: absolute;
   display: grid;
-  grid-template-rows: auto 1fr;
-  gap: 10px;
-  padding: 12px;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 6px;
+  padding: 8px;
   border-radius: 20px;
   background: linear-gradient(180deg, var(--panel-strong), rgba(8, 19, 31, 0.95));
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow);
   touch-action: none;
   user-select: none;
-  will-change: left, top, width, height;
 }
 
 .board-tile--dragging,
@@ -512,8 +511,9 @@ code {
 .board-tile__header {
   display: flex;
   justify-content: space-between;
-  align-items: start;
-  gap: 10px;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
   cursor: grab;
   padding: 2px;
 }
@@ -528,7 +528,7 @@ code {
 
 .board-tile__title {
   margin: 0;
-  font-size: 1.02rem;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -538,7 +538,7 @@ code {
 .board-tile__meta {
   margin: 5px 0 0;
   color: var(--text-muted);
-  font-size: 0.76rem;
+  font-size: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -550,7 +550,7 @@ code {
   flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
 }
 
 .board-tile__controls .device-card__viewport {
@@ -560,9 +560,9 @@ code {
 .board-tile__controls .device-card__focus,
 .board-tile__controls .device-card__rotate,
 .board-tile__remove {
-  padding: 8px 10px;
-  border-radius: 10px;
-  font-size: 0.8rem;
+  padding: 4px 6px;
+  border-radius: 6px;
+  font-size: 11px;
 }
 
 .board-tile__remove {
@@ -581,6 +581,7 @@ code {
   bottom: 6px;
   width: 26px;
   height: 26px;
+  padding: 0;
   cursor: nwse-resize;
   border-radius: 8px 4px 14px 4px;
   background:
@@ -657,14 +658,16 @@ body.board-dragging iframe {
   position: relative;
   min-height: 0;
   height: 100%;
-  padding: 8px;
+  padding: 0;
   border-radius: 24px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   background:
     radial-gradient(circle at top, rgba(255, 255, 255, 0.03), transparent 35%),
     linear-gradient(180deg, rgba(0, 0, 0, 0.18), rgba(255, 255, 255, 0.01));
-  overflow: hidden;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
+.board-tile__resize:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 2px; }
 
 .device-stage[role="button"] {
   cursor: pointer;
@@ -682,10 +685,24 @@ body.board-dragging iframe {
   width: var(--shell-width);
   height: var(--shell-height);
   transform: translate(-50%, -50%);
-  transition:
-    width 180ms ease,
-    height 180ms ease;
 }
+
+.preview-surface { position: relative; min-width: 100%; min-height: 100%; }
+.board-space { position: relative; overflow: hidden; }
+.board-world { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; }
+.board-toolbar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
+.board-toolbar .status-message { flex: 1; min-width: 180px; }
+.board-zoom { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+.board-zoom input { width: 100px; min-width: 0; }
+.zoom-controls { display: inline-flex; align-items: center; gap: 2px; }
+.zoom-controls button { min-height: 24px; padding: 2px 6px; border-radius: 5px; font-size: 11px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); cursor: pointer; }
+.zoom-controls button:nth-child(2) { min-width: 46px; font-variant-numeric: tabular-nums; }
+.zoom-controls button:disabled { opacity: 0.4; cursor: default; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .preview-zooming .device-shell { transition: transform 120ms ease-out; }
+}
+.board-tile--resizing .device-shell { transition: none; }
 
 .device-shell[data-frame-kind="browser"] {
   border-radius: 22px;

@@ -15,7 +15,7 @@ module.exports = [
     languageOptions: { sourceType: 'commonjs', globals: globals.node },
   },
   {
-    files: ['app.js', 'terminal-hall.js', 'tests/*browser-review.js', 'tests/browser-review.js'],
+    files: ['app.js', 'terminal-hall.js', 'integrations/**/*.js', 'tests/*browser-review.js', 'tests/browser-review.js'],
     languageOptions: { globals: { ...globals.browser, Terminal: 'readonly', FitAddon: 'readonly' } },
   },
 ];

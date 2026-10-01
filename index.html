@@ -93,18 +93,22 @@
               <datalist id="local-servers-list"></datalist>
             </div>
 
-            <label class="field field--slider">
-              <span class="field__label">Zoom</span>
+            <div class="field field--slider">
+              <label class="field__label" for="zoom-slider">All previews</label>
               <input
                 id="zoom-slider"
                 type="range"
-                min="60"
-                max="130"
-                step="5"
+                min="25"
+                max="200"
+                step="1"
                 value="100"
               />
-              <span id="zoom-value" class="field__value">100%</span>
-            </label>
+              <div class="zoom-controls">
+                <button type="button" id="grid-zoom-out" aria-label="Zoom out all previews">−</button>
+                <button type="button" id="zoom-value" title="Reset global preview zoom to 100%">100%</button>
+                <button type="button" id="grid-zoom-in" aria-label="Zoom in all previews">+</button>
+              </div>
+            </div>
 
             <div class="actions">
               <button type="submit" class="button button--primary">
@@ -199,20 +203,33 @@
             </label>
 
             <div class="board-add__actions">
-              <button type="submit" class="button button--primary">
+              <button type="submit" id="board-submit" class="button button--primary">
                 Add server tile
               </button>
               <button type="button" id="board-reload" class="button">
                 Fresh reload board
               </button>
+              <button type="button" id="board-cancel-edit" class="button" hidden>Cancel edit</button>
             </div>
           </form>
 
+          <div class="board-toolbar">
           <p id="board-status" class="status-message" role="status">
             Add any running local server URL and choose a device frame for it.
             Tiles can be dragged and resized anywhere on this board.
           </p>
-          <div id="board-canvas" class="board-canvas"></div>
+          <div class="board-zoom" aria-label="Board layout zoom">
+            <label for="board-zoom-slider">Layout</label>
+            <div class="zoom-controls">
+              <button type="button" id="board-zoom-out" aria-label="Zoom out board layout">−</button>
+              <button type="button" id="board-zoom-value" title="Reset board layout to 100%">100%</button>
+              <button type="button" id="board-zoom-in" aria-label="Zoom in board layout">+</button>
+            </div>
+            <input id="board-zoom-slider" type="range" min="25" max="200" step="1" value="100" />
+            <button type="button" id="board-fit" class="button button--small">Fit board</button>
+          </div>
+          </div>
+          <div id="board-canvas" class="board-canvas"><div id="board-space" class="board-space"><div id="board-world" class="board-world"></div></div></div>
         </section>
       </main>
     </div>

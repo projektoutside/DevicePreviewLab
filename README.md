@@ -18,8 +18,9 @@ device grid internally. Device frames scale to the available space.
 
 Every initial load, URL submission, grid reload, and focused-device reload uses
 a unique `__dpl_fresh` query value. This bypasses normal document-cache reuse
-without changing the clean target URL saved by Device Preview Lab. All four
-device frames use eager loading, so off-screen previews do not wait to begin.
+without changing the clean target URL saved by Device Preview Lab. Previews in
+the visible mode load eagerly. Hidden views defer initial navigation until you
+open them, avoiding unused app instances while restoring an All in One board.
 
 ## Tabs
 
@@ -61,10 +62,25 @@ grid:
 - Add any running `http://` or `https://` server URL and choose its device
   frame (Computer, Tablet, Galaxy S25, or iPhone Pro).
 - Drag a tile by its header to move it smoothly anywhere on the board.
-- Drag the glowing corner handle to resize the tile.
-- Each tile has its own Focus, Rotate (when supported), Reload, and Remove
+- Drag the glowing corner handle to resize the tile. Pointer updates are grouped
+  into animation frames, and the last size is saved even if dragging is cancelled.
+  Focus the handle and use arrow keys to resize by 10 pixels, or Shift + arrows
+  for 50-pixel steps.
+- New tiles fit the available board. **Layout** zoom scales the entire board;
+  **Fit board** brings the saved tile bounds into view. Dragging and resizing use
+  board coordinates at every zoom level. Large boards scroll inside the panel.
+- Every device box and board tile has **− / percentage / +** preview zoom controls.
+  Clicking the percentage resets that zoom to 100%. **All previews** adjusts
+  every device-grid preview together; individual percentages multiply that
+  setting. Enlarged content scrolls inside its box. Zoom never changes the device
+  viewport dimensions or reloads the app being previewed.
+- Each tile has its own Focus, Rotate (when supported), Reload, URL, Open, and Remove
   controls. Clicking the preview also opens fullscreen focus mode.
-- Board layout and tiles persist per tab.
+- **URL** changes an existing tile's target or device using the form above. Pick
+  a detected server or paste a URL and click **Save tile URL**; position, size and
+  zoom are retained. **Open** checks the target directly in a separate browser tab.
+  If it is blank there too, the target application needs its own startup diagnosis.
+- Board layout, local preview zoom and whole-board zoom persist per tab.
 
 ## Terminal Hall
 
@@ -212,6 +228,34 @@ http://127.0.0.1:9090
   Terminal Hall uses node-pty, xterm.js, its fit addon, and ws. No remote terminal
   service or CDN is used. Windows 10 1809 or later is required for ConPTY.
 
+## Flutter debug previews that stay white
+
+`flutter run -d chrome` can leave additional browser tabs and embedded previews
+waiting for a debugger startup signal, even after every Dart script loads. Large
+debug builds can also exhaust Chrome's resources when four previews each enqueue
+hundreds of scripts simultaneously.
+
+Enable the scoped compatibility helper in the Flutter project being previewed:
+
+```powershell
+.\scripts\Enable-FlutterPreview.ps1 -ProjectPath "C:\path\to\FlutterProject"
+```
+
+The installer backs up the existing `web/flutter_bootstrap.js`, preserves custom
+code, and updates only its own marked block on subsequent runs. Custom loader
+calls that cannot be safely located are left unchanged. Refresh the target using
+the Lab's Reload button after installation.
+
+The helper applies only to loopback debug pages opened with the Lab's preview
+marker. It caps DDC script concurrency at 32 and starts the loaded app if the
+debugger does not start it. Late debugger signals cannot start a second app.
+Normal unmarked browsing and release builds retain their original startup. It
+does not clear application storage or change browser security settings.
+
+For the explicitly installed, running Nikhom Flutter host, the additional live
+browser check is `tests/flutter-live-browser-review.js`. It uses an isolated Lab
+workspace and verifies board, grid, Terminal Hall, reload, Open, zoom and resizing.
+
 ## Regression checks
 
 Run the dependency-free state and server checks:
@@ -229,6 +273,8 @@ For the browser checks, start the preview server on port 19111, then run:
 npx --yes --package @playwright/cli playwright-cli -s=dpl-review open http://127.0.0.1:19111/ --browser chrome
 npx --yes --package @playwright/cli playwright-cli -s=dpl-review run-code --filename tests/browser-review.js
 npx --yes --package @playwright/cli playwright-cli -s=dpl-review run-code --filename tests/terminal-browser-review.js
+npx --yes --package @playwright/cli playwright-cli -s=dpl-review run-code --filename tests/layout-browser-review.js
+npx --yes --package @playwright/cli playwright-cli -s=dpl-review run-code --filename tests/zoom-browser-review.js
 npx --yes --package @playwright/cli playwright-cli -s=dpl-review close
 ```
 

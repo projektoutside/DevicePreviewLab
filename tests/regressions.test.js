@@ -40,6 +40,7 @@ test('corrupt workspace IDs and geometry cannot break restored boards', () => {
   assert.equal(run('new Set(state.tabs[0].boardTiles.map(tile => tile.id)).size'), 2);
   assert.equal(run('state.tabs[0].boardTiles.every(tile => [tile.x, tile.y, tile.width, tile.height].every(Number.isFinite))'), true);
   assert.equal(run('state.tabs[0].zoomPercent'), 100);
+  assert.equal(run('normalizeBoardTile({url: "http://localhost:3000", x: -40}).x'), 0);
 });
 
 test('fresh navigation preserves query and hash while rejecting unsafe URL schemes', () => {
@@ -49,6 +50,30 @@ test('fresh navigation preserves query and hash while rejecting unsafe URL schem
   assert.equal(url.hash, '#details');
   assert.notEqual(url.toString(), run('createFreshPreviewUrl("http://localhost:3000/a?x=1#details")'));
   assert.equal(run('normalizeUrl("javascript:alert(1)")'), null);
+});
+
+test('zoom preferences migrate safely and remain independent for devices and board tiles', () => {
+  const run = appContext();
+  assert.equal(run('normalizeTab({}, 0).boardZoomPercent'), 100);
+  assert.equal(run('normalizeTab({}, 0).deviceZooms.computer'), 100);
+  assert.equal(run('normalizeTab({zoomPercent: 125}, 0).zoomPercent'), 125);
+  assert.equal(run('normalizeTab({deviceZooms: {computer: "bad", tablet: 999}, boardZoomPercent: -1}, 0).deviceZooms.computer'), 100);
+  assert.equal(run('normalizeTab({deviceZooms: {tablet: 999}}, 0).deviceZooms.tablet'), 200);
+  assert.equal(run('normalizeTab({boardZoomPercent: -1}, 0).boardZoomPercent'), 25);
+  assert.equal(run('normalizeBoardTile({url: "http://localhost:3000", zoomPercent: "bad"}).zoomPercent'), 100);
+});
+
+test('hidden preview navigation defers work and keeps the latest requested target', () => {
+  const run = appContext();
+  run('globalThis.frame = {dataset: {}, src: "about:blank"}');
+  run('navigateFrameFresh(frame, "http://localhost:3000/old", {defer: true})');
+  run('navigateFrameFresh(frame, "http://localhost:3000/new", {defer: true})');
+  assert.equal(run('frame.src'), 'about:blank');
+  assert.equal(run('frame.dataset.pendingUrl'), 'http://localhost:3000/new');
+  run('navigateFrameFresh(frame, frame.dataset.pendingUrl)');
+  assert.equal(run('frame.dataset.pendingUrl'), undefined);
+  assert.equal(new URL(run('frame.src')).pathname, '/new');
+  assert.ok(new URL(run('frame.src')).searchParams.has('__dpl_fresh'));
 });
 
 async function startServer(t, port = '0') {

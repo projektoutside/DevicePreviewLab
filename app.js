@@ -92,6 +92,7 @@ const state = {
   cardRefs: new Map(),
   boardTileRefs: new Map(),
   boardDrag: null,
+  boardEditingTileId: null,
 };
 
 const elements = {
@@ -104,6 +105,8 @@ const elements = {
   openTarget: document.querySelector('#open-target'),
   zoomSlider: document.querySelector('#zoom-slider'),
   zoomValue: document.querySelector('#zoom-value'),
+  gridZoomOut: document.querySelector('#grid-zoom-out'),
+  gridZoomIn: document.querySelector('#grid-zoom-in'),
   statusMessage: document.querySelector('#status-message'),
   deviceGrid: document.querySelector('#device-grid'),
   template: document.querySelector('#device-card-template'),
@@ -115,6 +118,8 @@ const elements = {
   modeBoard: document.querySelector('#mode-board'),
   boardPanel: document.querySelector('#board-panel'),
   boardForm: document.querySelector('#board-add-form'),
+  boardSubmit: document.querySelector('#board-submit'),
+  boardCancelEdit: document.querySelector('#board-cancel-edit'),
   boardUrl: document.querySelector('#board-url'),
   boardPick: document.querySelector('#board-pick'),
   boardScan: document.querySelector('#board-scan'),
@@ -122,6 +127,13 @@ const elements = {
   boardReload: document.querySelector('#board-reload'),
   boardStatus: document.querySelector('#board-status'),
   boardCanvas: document.querySelector('#board-canvas'),
+  boardWorld: document.querySelector('#board-world'),
+  boardSpace: document.querySelector('#board-space'),
+  boardZoomSlider: document.querySelector('#board-zoom-slider'),
+  boardZoomValue: document.querySelector('#board-zoom-value'),
+  boardZoomOut: document.querySelector('#board-zoom-out'),
+  boardZoomIn: document.querySelector('#board-zoom-in'),
+  boardFit: document.querySelector('#board-fit'),
   focusOverlay: document.querySelector('#focus-overlay'),
   focusStage: document.querySelector('#focus-stage'),
   focusShell: document.querySelector('#focus-shell'),
@@ -137,13 +149,11 @@ const elements = {
   focusClose: document.querySelector('#focus-close'),
 };
 
-const stageObserver = new ResizeObserver(() => {
-  syncAllCardScales();
-  syncAllBoardTileScales();
-  syncFocusScale();
-});
+const stageObserver = new ResizeObserver(scheduleViewportSync);
 
 let pendingViewportSync = 0;
+let pendingBoardZoom = 0;
+let boardZoomAnchor = null;
 let freshLoadCounter = 0;
 
 bootstrap();
@@ -155,8 +165,7 @@ function bootstrap() {
 
   const activeTab = getActiveTab();
   elements.targetUrl.value = activeTab.targetUrl;
-  elements.zoomSlider.value = String(activeTab.zoomPercent);
-  elements.zoomValue.textContent = `${activeTab.zoomPercent}%`;
+  updateZoomControls();
 
   renderTabs();
   renderCards();
@@ -176,6 +185,7 @@ function bootstrap() {
 
 function attachEvents() {
   elements.terminalHallTab.addEventListener('click', () => {
+    flushBoardZoom();
     endBoardDrag();
     closeFocusPreview();
     state.workspaceView = 'terminal';
@@ -210,18 +220,21 @@ function attachEvents() {
       return;
     }
 
-    window.open(normalizedUrl, '_blank', 'noopener,noreferrer');
+    window.open(createFreshPreviewUrl(normalizedUrl), '_blank', 'noopener,noreferrer');
     setStatus(`Opened ${normalizedUrl} in a new browser tab.`, 'success');
   });
 
   elements.zoomSlider.addEventListener('input', () => {
-    const activeTab = getActiveTab();
-    activeTab.zoomPercent = Number(elements.zoomSlider.value);
-    persistWorkspace();
-    elements.zoomValue.textContent = `${activeTab.zoomPercent}%`;
-    syncAllCardScales();
-    syncFocusScale();
+    setGridZoom(Number(elements.zoomSlider.value));
   });
+  elements.gridZoomOut.addEventListener('click', () => setGridZoom(getActiveTab().zoomPercent - 10));
+  elements.gridZoomIn.addEventListener('click', () => setGridZoom(getActiveTab().zoomPercent + 10));
+  elements.zoomValue.addEventListener('click', () => setGridZoom(100));
+  elements.boardZoomSlider.addEventListener('input', () => setBoardZoom(Number(elements.boardZoomSlider.value)));
+  elements.boardZoomOut.addEventListener('click', () => setBoardZoom(getBoardZoom() - 10));
+  elements.boardZoomIn.addEventListener('click', () => setBoardZoom(getBoardZoom() + 10));
+  elements.boardZoomValue.addEventListener('click', () => setBoardZoom(100));
+  elements.boardFit.addEventListener('click', fitBoard);
 
   elements.tabAdd.addEventListener('click', () => {
     createTab();
@@ -329,6 +342,16 @@ function renderCards() {
     const shell = cardFragment.querySelector('.device-shell');
     const canvas = cardFragment.querySelector('.device-canvas');
     const iframe = cardFragment.querySelector('.device-frame');
+    const surface = wrapPreviewSurface(stage, shell);
+    const zoomControls = createPreviewZoomControls(preset.label, () => getDeviceZoom(preset.id), value => {
+      const tab = getActiveTab();
+      tab.deviceZooms ??= {};
+      tab.deviceZooms[preset.id] = clampZoomPercent(value);
+      persistWorkspace();
+      animatePreviewZoom(stage);
+      scheduleViewportSync();
+    });
+    cardFragment.querySelector('.device-card__controls').appendChild(zoomControls.element);
 
     card.dataset.deviceId = preset.id;
     card.dataset.accent = preset.accent;
@@ -340,7 +363,8 @@ function renderCards() {
     stage.setAttribute('role', 'button');
     stage.setAttribute('aria-label', `Open ${preset.label} in fullscreen focus mode`);
 
-    stage.addEventListener('click', () => {
+    stage.addEventListener('click', event => {
+      if (event.target === stage) return;
       openFocusPreview(preset.id, { fullscreen: true });
     });
 
@@ -377,6 +401,8 @@ function renderCards() {
       canvas,
       iframe,
       viewport,
+      surface,
+      zoomControls,
     });
 
     fragment.appendChild(cardFragment);
@@ -443,6 +469,7 @@ function syncCardScale(deviceId) {
   }
 
   const { stage, shell } = cardRef;
+  cardRef.zoomControls.update();
   const shellWidth = Number.parseFloat(
     shell.style.getPropertyValue('--shell-width'),
   );
@@ -461,10 +488,83 @@ function syncCardScale(deviceId) {
     padding: CARD_STAGE_FIT_PADDING,
     maxScale: 1,
   });
-  const zoomScale = getActiveTab().zoomPercent / 100;
-  const finalScale = Math.max(0.01, Math.min(fitScale * zoomScale, 1.35));
+  const zoomScale = getActiveTab().zoomPercent * getDeviceZoom(deviceId) / 10000;
+  const finalScale = Math.max(0.001, fitScale * zoomScale);
+  applyPreviewScale(cardRef, finalScale, shellWidth, shellHeight);
+}
 
-  shell.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
+function wrapPreviewSurface(stage, shell) {
+  const surface = document.createElement('div');
+  surface.className = 'preview-surface';
+  stage.appendChild(surface);
+  surface.appendChild(shell);
+  return surface;
+}
+
+function applyPreviewScale(ref, scale, width, height) {
+  ref.surface.style.width = `${Math.max(ref.stage.clientWidth, Math.ceil(width * scale + CARD_STAGE_FIT_PADDING))}px`;
+  ref.surface.style.height = `${Math.max(ref.stage.clientHeight, Math.ceil(height * scale + CARD_STAGE_FIT_PADDING))}px`;
+  ref.shell.style.transform = `translate(-50%, -50%) scale(${scale})`;
+}
+
+function getDeviceZoom(deviceId) {
+  return clampZoomPercent(Number(getActiveTab().deviceZooms?.[deviceId] ?? 100));
+}
+
+function createPreviewZoomControls(label, getValue, setValue) {
+  const element = document.createElement('div');
+  element.className = 'zoom-controls';
+  const buttons = ['−', '100%', '+'].map((text, index) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = text;
+    button.title = ['Zoom out', 'Reset this preview to 100%', 'Zoom in'][index];
+    button.addEventListener('click', event => {
+      event.stopPropagation();
+      setValue(index === 1 ? 100 : getValue() + (index === 0 ? -10 : 10));
+      update();
+    });
+    element.appendChild(button);
+    return button;
+  });
+  elements.boardCancelEdit.addEventListener('click', cancelBoardEdit);
+  function update() {
+    const value = getValue();
+    const name = typeof label === 'function' ? label() : label;
+    buttons.forEach((button, index) => button.setAttribute('aria-label', `${name} ${['zoom out', 'reset zoom', 'zoom in'][index]}`));
+    buttons[1].textContent = `${value}%`;
+    buttons[0].disabled = value <= 25;
+    buttons[2].disabled = value >= 200;
+  }
+  update();
+  return { element, update };
+}
+
+function animatePreviewZoom(stage) {
+  stage.classList.add('preview-zooming');
+  clearTimeout(stage.zoomTimer);
+  stage.zoomTimer = setTimeout(() => stage.classList.remove('preview-zooming'), 160);
+}
+
+function updateZoomControls() {
+  const tab = getActiveTab();
+  elements.zoomSlider.value = String(tab.zoomPercent);
+  elements.zoomValue.textContent = `${tab.zoomPercent}%`;
+  elements.gridZoomOut.disabled = tab.zoomPercent <= 25;
+  elements.gridZoomIn.disabled = tab.zoomPercent >= 200;
+  const boardZoom = getBoardZoom();
+  elements.boardZoomSlider.value = String(boardZoom);
+  elements.boardZoomValue.textContent = `${boardZoom}%`;
+  elements.boardZoomOut.disabled = boardZoom <= 25;
+  elements.boardZoomIn.disabled = boardZoom >= 200;
+}
+
+function setGridZoom(value) {
+  getActiveTab().zoomPercent = clampZoomPercent(value);
+  state.cardRefs.forEach(ref => animatePreviewZoom(ref.stage));
+  updateZoomControls();
+  persistWorkspace();
+  scheduleViewportSync();
 }
 
 function syncFocusScale() {
@@ -517,13 +617,14 @@ function getFitScale({
 
 function scheduleViewportSync() {
   if (pendingViewportSync) {
-    window.cancelAnimationFrame(pendingViewportSync);
+    return;
   }
 
   pendingViewportSync = window.requestAnimationFrame(() => {
     pendingViewportSync = 0;
     syncAllCardScales();
     syncAllBoardTileScales();
+    syncBoardLayout();
     syncFocusScale();
   });
 }
@@ -673,7 +774,7 @@ function validateAndApplyUrl(rawUrl) {
 
 function applyUrlToFrames(url) {
   state.cardRefs.forEach(({ iframe }) => {
-    navigateFrameFresh(iframe, url);
+    navigateFrameFresh(iframe, url, { defer: state.mode !== 'grid' || state.workspaceView !== 'preview' });
   });
 
   if (state.focused.deviceId && !state.focused.boardTileId) {
@@ -703,8 +804,17 @@ function refreshAfterHistoryRestore(event) {
   setStatus('Page restored. Fresh-reloaded every preview frame.', 'success');
 }
 
-function navigateFrameFresh(iframe, url) {
+function navigateFrameFresh(iframe, url, { defer = false } = {}) {
+  if (defer) {
+    iframe.dataset.pendingUrl = url;
+    return;
+  }
+  delete iframe.dataset.pendingUrl;
   iframe.src = createFreshPreviewUrl(url);
+}
+
+function flushPendingPreviews(container) {
+  container.querySelectorAll('iframe[data-pending-url]').forEach(iframe => navigateFrameFresh(iframe, iframe.dataset.pendingUrl));
 }
 
 function createFreshPreviewUrl(url) {
@@ -746,7 +856,7 @@ function clampZoomPercent(value) {
   if (!Number.isFinite(value)) {
     return 100;
   }
-  return Math.min(130, Math.max(60, value));
+  return Math.min(200, Math.max(25, value));
 }
 
 function getActiveTab() {
@@ -772,6 +882,8 @@ function createTab(options = {}) {
     targetUrl: normalizeUrl(options.targetUrl ?? '') ?? DEFAULT_TARGET_URL,
     orientations: { ...(options.orientations ?? {}) },
     zoomPercent: clampZoomPercent(Number(options.zoomPercent ?? 100)),
+    deviceZooms: {},
+    boardZoomPercent: 100,
     boardTiles: [],
   };
   state.tabs.push(tab);
@@ -793,14 +905,14 @@ function activateTab(tabId, options = {}) {
   if (!tab) {
     return;
   }
+  flushBoardZoom();
   endBoardDrag();
   closeFocusPreview();
   state.activeTabId = tab.id;
   persistWorkspace();
   renderTabs();
   elements.targetUrl.value = tab.targetUrl;
-  elements.zoomSlider.value = String(tab.zoomPercent);
-  elements.zoomValue.textContent = `${tab.zoomPercent}%`;
+  updateZoomControls();
   DEVICE_PRESETS.forEach((preset) => updateCardGeometry(preset.id));
   applyUrlToFrames(tab.targetUrl);
   renderBoard();
@@ -929,6 +1041,7 @@ function compactUrl(url) {
 }
 
 function setMode(mode, options = {}) {
+  flushBoardZoom();
   state.workspaceView = 'preview';
   window.TerminalHall?.hide();
   renderTabs();
@@ -941,12 +1054,15 @@ function setMode(mode, options = {}) {
   elements.deviceGrid.hidden = isBoard;
   elements.gridControls.hidden = isBoard;
   elements.boardPanel.hidden = !isBoard;
+  flushPendingPreviews(isBoard ? elements.boardWorld : elements.deviceGrid);
+  updateZoomControls();
   persistWorkspace();
   if (!options.silent) {
     setStatus(isBoard ? 'All in One board is active. Drag, resize, reload, or remove tiles.' : `Device grid is active for tab “${getActiveTab().name}”.`, 'success');
   }
   window.requestAnimationFrame(() => {
     if (isBoard) {
+      syncBoardLayout();
       syncAllBoardTileScales();
     } else {
       syncAllCardScales();
@@ -1007,28 +1123,56 @@ function addBoardTile(rawUrl, deviceId) {
   }
   const tiles = getBoardTiles();
   const preset = getPresetById(deviceId);
+  if (state.boardEditingTileId) {
+    const tile = tiles.find(item => item.id === state.boardEditingTileId);
+    if (!tile) {
+      cancelBoardEdit();
+      setBoardStatus('That tile is no longer available. Add a new tile instead.', 'error');
+      return false;
+    }
+    if (tile.name === deriveTileName(tile.url)) tile.name = deriveTileName(normalizedUrl);
+    tile.url = normalizedUrl;
+    if (tile.deviceId !== preset.id) tile.orientation = preset.defaultOrientation;
+    tile.deviceId = preset.id;
+    const ref = state.boardTileRefs.get(tile.id);
+    ref.title.textContent = tile.name;
+    ref.title.title = tile.url;
+    updateBoardTileGeometry(tile.id);
+    syncBoardTileScale(tile.id);
+    navigateBoardTileFresh(tile.id);
+    if (state.focused.boardTileId === tile.id) syncFocusPreview();
+    cancelBoardEdit();
+    persistWorkspace();
+    setBoardStatus(`Updated ${tile.name}. Its position, size and zoom were preserved.`, 'success');
+    return true;
+  }
   const frame = getFrameDimensions(preset, preset.defaultOrientation);
+  const x = 24 + (tiles.length % 6) * 36;
+  const y = 24 + (tiles.length % 6) * 28;
   const tile = {
     id: createId('tile'),
     name: deriveTileName(normalizedUrl),
     url: normalizedUrl,
     deviceId: preset.id,
     orientation: preset.defaultOrientation,
-    x: 24 + (tiles.length % 6) * 36,
-    y: 24 + (tiles.length % 6) * 28,
-    width: clampNumber(frame.shellWidth + 48, BOARD_MIN_WIDTH, BOARD_MAX_WIDTH),
-    height: clampNumber(frame.shellHeight + 148, BOARD_MIN_HEIGHT, BOARD_MAX_HEIGHT),
+    x,
+    y,
+    width: clampNumber(Math.min(frame.shellWidth + 48, elements.boardCanvas.clientWidth / (getBoardZoom() / 100) - x - 24), BOARD_MIN_WIDTH, BOARD_MAX_WIDTH),
+    height: clampNumber(Math.min(frame.shellHeight + 110, elements.boardCanvas.clientHeight / (getBoardZoom() / 100) - y - 24), BOARD_MIN_HEIGHT, BOARD_MAX_HEIGHT),
+    zoomPercent: 100,
   };
   tiles.push(tile);
   persistWorkspace();
   renderBoardTile(tile);
   bringBoardTileToFront(tile.id, { persist: false });
+  syncBoardLayout();
   elements.boardUrl.value = '';
   setBoardStatus(`Added ${tile.name} as ${preset.label}. Drag the header to move it, or drag the corner to resize.`, 'success');
   return true;
 }
 
 function removeBoardTile(tileId) {
+  if (state.boardEditingTileId === tileId) cancelBoardEdit();
   const tiles = getBoardTiles();
   const index = tiles.findIndex((tile) => tile.id === tileId);
   if (index === -1) {
@@ -1046,6 +1190,7 @@ function removeBoardTile(tileId) {
   }
   persistWorkspace();
   setBoardStatus(`Removed ${removed.name} from the board.`, 'success');
+  syncBoardLayout();
 }
 
 function rotateBoardTile(tileId) {
@@ -1069,7 +1214,7 @@ function rotateBoardTile(tileId) {
 
 function reloadBoardTiles() {
   state.boardTileRefs.forEach((ref) => {
-    navigateFrameFresh(ref.iframe, ref.tile.url);
+    navigateBoardTileFresh(ref.tile.id);
   });
   if (state.focused.boardTileId) {
     syncFocusPreview();
@@ -1081,19 +1226,21 @@ function navigateBoardTileFresh(tileId) {
   if (!ref) {
     return;
   }
-  navigateFrameFresh(ref.iframe, ref.tile.url);
+  navigateFrameFresh(ref.iframe, ref.tile.url, { defer: state.mode !== 'board' || state.workspaceView !== 'preview' });
 }
 
 function renderBoard() {
   endBoardDrag();
+  cancelBoardEdit();
   state.boardTileRefs.forEach((ref) => stageObserver.unobserve(ref.stage));
   state.boardTileRefs.clear();
-  elements.boardCanvas.innerHTML = '';
+  elements.boardWorld.innerHTML = '';
   getBoardTiles().forEach((tile) => renderBoardTile(tile));
   getBoardTiles().forEach((tile, index) => {
     state.boardTileRefs.get(tile.id).element.style.zIndex = String(10 + index);
   });
   syncAllBoardTileScales();
+  syncBoardLayout();
 }
 
 function updateBoardTileGeometry(tileId) {
@@ -1120,6 +1267,7 @@ function updateBoardTileGeometry(tileId) {
   ref.canvas.style.setProperty('--frame-height', `${frame.height}px`);
   ref.canvas.style.setProperty('--frame-radius', `${preset.frameRadius}px`);
   ref.viewport.textContent = `${frame.width} × ${frame.height}`;
+  ref.iframe.title = `${preset.label} preview for ${ref.tile.name}`;
   ref.meta.textContent = `${preset.label} • ${ref.tile.orientation} • ${ref.tile.url}`;
   ref.stage.setAttribute('aria-label', `Open ${ref.tile.name} in fullscreen focus mode`);
 
@@ -1127,6 +1275,7 @@ function updateBoardTileGeometry(tileId) {
   if (rotateButton) {
     rotateButton.hidden = !preset.rotatable;
   }
+  ref.element.querySelector('.board-tile__resize')?.setAttribute('aria-label', `Resize ${ref.tile.name}`);
 }
 
 function syncAllBoardTileScales() {
@@ -1138,6 +1287,7 @@ function syncBoardTileScale(tileId) {
   if (!ref || elements.boardPanel.hidden) {
     return;
   }
+  ref.zoomControls.update();
   const shellWidth = Number.parseFloat(ref.shell.style.getPropertyValue('--shell-width'));
   const shellHeight = Number.parseFloat(ref.shell.style.getPropertyValue('--shell-height'));
   if (!shellWidth || !shellHeight) {
@@ -1148,10 +1298,9 @@ function syncBoardTileScale(tileId) {
     shellWidth,
     shellHeight,
     padding: CARD_STAGE_FIT_PADDING,
-    minScale: 0.12,
     maxScale: 1.35,
-  });
-  ref.shell.style.transform = `translate(-50%, -50%) scale(${finalScale})`;
+  }) * clampZoomPercent(Number(ref.tile.zoomPercent ?? 100)) / 100;
+  applyPreviewScale(ref, finalScale, shellWidth, shellHeight);
 }
 
 function renderBoardTile(tile) {
@@ -1214,16 +1363,44 @@ function renderBoardTile(tile) {
     removeBoardTile(tile.id);
   });
 
-  controls.append(viewport, focusButton, rotateButton, reloadButton, removeButton);
+  const zoomControls = createPreviewZoomControls(() => tile.name, () => clampZoomPercent(Number(tile.zoomPercent ?? 100)), value => {
+    tile.zoomPercent = clampZoomPercent(value);
+    persistWorkspace();
+    animatePreviewZoom(stage);
+    scheduleViewportSync();
+  });
+
+  const editButton = document.createElement('button');
+  editButton.type = 'button';
+  editButton.className = 'device-card__rotate';
+  editButton.textContent = 'URL';
+  editButton.title = 'Change this tile’s URL or device without losing its layout';
+  editButton.addEventListener('click', () => {
+    state.boardEditingTileId = tile.id;
+    elements.boardUrl.value = tile.url;
+    elements.boardDevice.value = tile.deviceId;
+    elements.boardSubmit.textContent = 'Save tile URL';
+    elements.boardCancelEdit.hidden = false;
+    elements.boardUrl.focus();
+    setBoardStatus(`Editing ${tile.name}. Paste a URL or pick a detected server, then save.`, 'info');
+  });
+  const openButton = document.createElement('button');
+  openButton.type = 'button';
+  openButton.className = 'device-card__rotate';
+  openButton.textContent = 'Open';
+  openButton.title = 'Open this target directly to check whether the app itself is loading';
+  openButton.addEventListener('click', () => window.open(createFreshPreviewUrl(tile.url), '_blank', 'noopener,noreferrer'));
+  controls.append(viewport, zoomControls.element, focusButton, rotateButton, reloadButton, editButton, openButton, removeButton);
   header.append(titleWrap, controls);
   element.appendChild(header);
-  elements.boardCanvas.appendChild(element);
+  elements.boardWorld.appendChild(element);
 
   const stage = document.createElement('div');
   stage.className = 'device-stage board-tile__stage';
   stage.tabIndex = 0;
   stage.setAttribute('role', 'button');
-  stage.addEventListener('click', () => {
+  stage.addEventListener('click', event => {
+    if (event.target === stage) return;
     openFocusPreview(tile.deviceId, { fullscreen: true, boardTileId: tile.id });
   });
   stage.addEventListener('keydown', (event) => {
@@ -1249,25 +1426,39 @@ function renderBoardTile(tile) {
   canvas.appendChild(iframe);
   shell.append(chrome, canvas);
   stage.appendChild(shell);
+  const surface = wrapPreviewSurface(stage, shell);
   element.appendChild(stage);
 
-  const resizeHandle = document.createElement('div');
+  const resizeHandle = document.createElement('button');
+  resizeHandle.type = 'button';
   resizeHandle.className = 'board-tile__resize';
-  resizeHandle.title = 'Drag to resize';
-  resizeHandle.setAttribute('aria-hidden', 'true');
+  resizeHandle.title = 'Drag to resize, or use arrow keys (Shift for larger steps)';
+  resizeHandle.setAttribute('aria-label', `Resize ${tile.name}`);
+  resizeHandle.addEventListener('keydown', event => {
+    const deltas = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    const delta = deltas[event.key];
+    if (!delta) return;
+    event.preventDefault();
+    const step = event.shiftKey ? 50 : 10;
+    tile.width = clampNumber(tile.width + delta[0] * step, BOARD_MIN_WIDTH, BOARD_MAX_WIDTH);
+    tile.height = clampNumber(tile.height + delta[1] * step, BOARD_MIN_HEIGHT, BOARD_MAX_HEIGHT);
+    updateBoardTileGeometry(tile.id);
+    persistWorkspace();
+    scheduleViewportSync();
+  });
   element.appendChild(resizeHandle);
 
   header.addEventListener('pointerdown', (event) => beginBoardDrag(event, tile.id, 'move'));
   resizeHandle.addEventListener('pointerdown', (event) => beginBoardDrag(event, tile.id, 'resize'));
 
   stageObserver.observe(stage);
-  state.boardTileRefs.set(tile.id, { tile, preset, element, header, stage, shell, canvas, iframe, viewport, meta });
+  state.boardTileRefs.set(tile.id, { tile, preset, element, header, stage, shell, canvas, iframe, viewport, meta, title, surface, zoomControls });
   updateBoardTileGeometry(tile.id);
   navigateBoardTileFresh(tile.id);
 }
 
 function beginBoardDrag(event, tileId, action) {
-  if (event.target.closest('button') || state.boardDrag) {
+  if ((action === 'move' && event.target.closest('button, input, select')) || state.boardDrag) {
     return;
   }
   if (event.button !== undefined && event.button !== 0) {
@@ -1277,6 +1468,7 @@ function beginBoardDrag(event, tileId, action) {
   if (!ref) {
     return;
   }
+  flushBoardZoom();
   event.preventDefault();
   bringBoardTileToFront(tileId);
   state.boardDrag = {
@@ -1289,6 +1481,11 @@ function beginBoardDrag(event, tileId, action) {
     originY: ref.tile.y,
     originWidth: ref.tile.width,
     originHeight: ref.tile.height,
+    scale: getBoardZoom() / 100,
+    scrollLeft: elements.boardCanvas.scrollLeft,
+    scrollTop: elements.boardCanvas.scrollTop,
+    frame: 0,
+    point: null,
     captureTarget: event.currentTarget,
   };
   event.currentTarget.setPointerCapture(event.pointerId);
@@ -1306,25 +1503,36 @@ function handleBoardDragMove(event) {
   if (!drag || event.pointerId !== drag.pointerId) {
     return;
   }
+  drag.point = { x: event.clientX, y: event.clientY };
+  if (!drag.frame) {
+    drag.frame = window.requestAnimationFrame(applyBoardDragMove);
+  }
+}
+
+function applyBoardDragMove() {
+  const drag = state.boardDrag;
+  if (!drag) return;
+  drag.frame = 0;
+  if (!drag.point) return;
   const ref = state.boardTileRefs.get(drag.tileId);
   if (!ref) {
     return;
   }
-  const deltaX = event.clientX - drag.startX;
-  const deltaY = event.clientY - drag.startY;
+  const deltaX = (drag.point.x - drag.startX + elements.boardCanvas.scrollLeft - drag.scrollLeft) / drag.scale;
+  const deltaY = (drag.point.y - drag.startY + elements.boardCanvas.scrollTop - drag.scrollTop) / drag.scale;
   if (drag.action === 'move') {
-    const maxX = Math.max(elements.boardCanvas.clientWidth - 120, 0);
-    ref.tile.x = clampNumber(drag.originX + deltaX, -40, maxX);
+    ref.tile.x = clampNumber(drag.originX + deltaX, 0, 4000);
     ref.tile.y = clampNumber(drag.originY + deltaY, 0, 3000);
+    ref.element.style.left = `${ref.tile.x}px`;
+    ref.element.style.top = `${ref.tile.y}px`;
   } else {
     ref.tile.width = clampNumber(drag.originWidth + deltaX, BOARD_MIN_WIDTH, BOARD_MAX_WIDTH);
     ref.tile.height = clampNumber(drag.originHeight + deltaY, BOARD_MIN_HEIGHT, BOARD_MAX_HEIGHT);
+    ref.element.style.width = `${ref.tile.width}px`;
+    ref.element.style.height = `${ref.tile.height}px`;
+    syncBoardTileScale(drag.tileId);
   }
-  ref.element.style.left = `${ref.tile.x}px`;
-  ref.element.style.top = `${ref.tile.y}px`;
-  ref.element.style.width = `${ref.tile.width}px`;
-  ref.element.style.height = `${ref.tile.height}px`;
-  syncBoardTileScale(drag.tileId);
+  syncBoardLayout();
 }
 
 function endBoardDrag(event) {
@@ -1332,6 +1540,8 @@ function endBoardDrag(event) {
   if (!drag || (event?.pointerId !== undefined && event.pointerId !== drag.pointerId)) {
     return;
   }
+  if (drag.frame) window.cancelAnimationFrame(drag.frame);
+  applyBoardDragMove();
   state.boardDrag = null;
   window.removeEventListener('pointermove', handleBoardDragMove);
   window.removeEventListener('pointerup', endBoardDrag);
@@ -1352,6 +1562,76 @@ function endBoardDrag(event) {
 
 function cancelBoardDrag() {
   endBoardDrag();
+}
+
+function cancelBoardEdit() {
+  if (!state.boardEditingTileId) return;
+  state.boardEditingTileId = null;
+  elements.boardSubmit.textContent = 'Add server tile';
+  elements.boardCancelEdit.hidden = true;
+  elements.boardUrl.value = '';
+}
+
+function getBoardZoom() {
+  return clampZoomPercent(Number(getActiveTab().boardZoomPercent ?? 100));
+}
+
+function getBoardExtent() {
+  return getBoardTiles().reduce((size, tile) => ({
+    width: Math.max(size.width, tile.x + tile.width + 24),
+    height: Math.max(size.height, tile.y + tile.height + 24),
+  }), { width: 1, height: 1 });
+}
+
+function syncBoardLayout() {
+  if (elements.boardPanel.hidden || pendingBoardZoom) return;
+  const scale = getBoardZoom() / 100;
+  const extent = getBoardExtent();
+  const width = Math.max(extent.width, elements.boardCanvas.clientWidth / scale);
+  const height = Math.max(extent.height, elements.boardCanvas.clientHeight / scale);
+  elements.boardWorld.style.width = `${width}px`;
+  elements.boardWorld.style.height = `${height}px`;
+  elements.boardWorld.style.transform = `scale(${scale})`;
+  elements.boardWorld.dataset.scale = String(scale);
+  elements.boardSpace.style.width = `${Math.ceil(width * scale)}px`;
+  elements.boardSpace.style.height = `${Math.ceil(height * scale)}px`;
+}
+
+function setBoardZoom(value) {
+  endBoardDrag();
+  const canvas = elements.boardCanvas;
+  if (!pendingBoardZoom) {
+    const oldScale = Number(elements.boardWorld.dataset.scale) || getBoardZoom() / 100;
+    boardZoomAnchor = {
+      x: (canvas.scrollLeft + canvas.clientWidth / 2) / oldScale,
+      y: (canvas.scrollTop + canvas.clientHeight / 2) / oldScale,
+    };
+    pendingBoardZoom = window.requestAnimationFrame(flushBoardZoom);
+  }
+  getActiveTab().boardZoomPercent = clampZoomPercent(value);
+  updateZoomControls();
+  persistWorkspace();
+}
+
+function flushBoardZoom() {
+  if (!pendingBoardZoom) return;
+  window.cancelAnimationFrame(pendingBoardZoom);
+  pendingBoardZoom = 0;
+  const canvas = elements.boardCanvas;
+  const scale = getBoardZoom() / 100;
+  syncBoardLayout();
+  canvas.scrollLeft = boardZoomAnchor.x * scale - canvas.clientWidth / 2;
+  canvas.scrollTop = boardZoomAnchor.y * scale - canvas.clientHeight / 2;
+  boardZoomAnchor = null;
+}
+
+function fitBoard() {
+  endBoardDrag();
+  const extent = getBoardExtent();
+  setBoardZoom(Math.floor(Math.min(elements.boardCanvas.clientWidth / extent.width, elements.boardCanvas.clientHeight / extent.height, 1) * 100));
+  flushBoardZoom();
+  elements.boardCanvas.scrollLeft = 0;
+  elements.boardCanvas.scrollTop = 0;
 }
 
 function bringBoardTileToFront(tileId, options = {}) {
@@ -1587,6 +1867,8 @@ function normalizeTab(tab, index) {
     targetUrl: normalizeUrl(tab?.targetUrl ?? '') ?? DEFAULT_TARGET_URL,
     orientations,
     zoomPercent: clampZoomPercent(Number(tab?.zoomPercent ?? 100)),
+    deviceZooms: Object.fromEntries(DEVICE_PRESETS.map(preset => [preset.id, clampZoomPercent(Number(tab?.deviceZooms?.[preset.id] ?? 100))])),
+    boardZoomPercent: clampZoomPercent(Number(tab?.boardZoomPercent ?? 100)),
     boardTiles,
   };
 }
@@ -1621,10 +1903,11 @@ function normalizeBoardTile(tile) {
     url,
     deviceId: preset.id,
     orientation,
-    x: clampNumber(Number(tile?.x ?? 24), -40, 4000),
+    x: clampNumber(Number(tile?.x ?? 24), 0, 4000),
     y: clampNumber(Number(tile?.y ?? 24), 0, 3000),
     width: clampNumber(Number(tile?.width ?? frame.shellWidth + 48), BOARD_MIN_WIDTH, BOARD_MAX_WIDTH),
     height: clampNumber(Number(tile?.height ?? frame.shellHeight + 148), BOARD_MIN_HEIGHT, BOARD_MAX_HEIGHT),
+    zoomPercent: clampZoomPercent(Number(tile?.zoomPercent ?? 100)),
   };
 }
 

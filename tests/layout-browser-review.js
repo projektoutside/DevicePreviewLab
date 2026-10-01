@@ -50,7 +50,13 @@ async (page) => {
   await page.getByRole('button', { name: 'All in One', exact: true }).click();
   await page.locator('#board-url').fill('http://127.0.0.1:19112/board');
   await page.getByRole('button', { name: 'Add server tile', exact: true }).click();
-  check(await page.locator('#board-canvas').evaluate(el => el.scrollHeight > el.clientHeight), 'Large board tiles must scroll within the board');
+  check(await page.locator('#board-canvas').evaluate(el => el.scrollHeight <= el.clientHeight + 1), 'New board tiles must fit the available board');
+  const handle = await page.locator('.board-tile__resize').boundingBox();
+  await page.mouse.move(handle.x + 12, handle.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(handle.x + 12, handle.y + 512, { steps: 12 });
+  await page.mouse.up();
+  check(await page.locator('#board-canvas').evaluate(el => el.scrollHeight > el.clientHeight), 'Manually enlarged board tiles must scroll within the board');
   check(await outerFits(), 'Large board tiles must not grow the main page');
   return { checks, controls };
 }
