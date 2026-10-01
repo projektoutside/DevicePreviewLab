@@ -1399,12 +1399,12 @@ async function refreshLocalServers(options = {}) {
       if (servers.length > 0) {
         setStatus(`Detected ${servers.length} running local server${servers.length === 1 ? '' : 's'}. Pick one from the dropdown.`, 'success');
       } else {
-        setStatus('No running local servers were detected on common ports. You can still type any URL manually.', 'error');
+        setStatus('No running local web servers were detected. You can still type any URL manually.', 'error');
       }
       setBoardStatus(
         servers.length > 0
           ? `Detected ${servers.length} running local server${servers.length === 1 ? '' : 's'}. Pick one from either dropdown.`
-          : 'No running local servers were detected on common ports. You can still type any URL manually.',
+          : 'No running local web servers were detected. You can still type any URL manually.',
         servers.length > 0 ? 'success' : 'error',
       );
     }
@@ -1437,18 +1437,20 @@ async function discoverLocalServers() {
 
 async function fetchLocalServersFromApi() {
   const controller = new AbortController();
-  const timer = window.setTimeout(() => controller.abort(), 5000);
+  const timer = window.setTimeout(() => controller.abort(), 25000);
   try {
     const response = await fetch(LOCAL_SERVERS_ENDPOINT, { cache: 'no-store', signal: controller.signal });
     if (!response.ok) {
+      if (response.status !== 404) throw new Error('Local server discovery is unavailable. Try Scan again.');
       return null;
     }
     const payload = await response.json();
     if (!payload || !Array.isArray(payload.servers)) {
-      return null;
+      throw new Error('The local server scan returned an invalid response.');
     }
     return normalizeServerEntries(payload.servers);
-  } catch {
+  } catch (error) {
+    if (['127.0.0.1', 'localhost', '[::1]'].includes(window.location.hostname)) throw error;
     return null;
   } finally {
     window.clearTimeout(timer);

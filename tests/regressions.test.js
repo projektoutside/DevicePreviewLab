@@ -147,10 +147,12 @@ test('local scanning identifies HTTP servers, excludes raw TCP services, and han
   const scans = await Promise.all(Array.from({ length: 4 }, () => request(origin, '/api/local-servers')));
   for (const scan of scans) {
     assert.equal(scan.status, 200);
-    const ports = JSON.parse(scan.body).servers.map(entry => entry.port);
+    const entries = JSON.parse(scan.body).servers;
+    const ports = entries.map(entry => entry.port);
     assert.ok(ports.includes(fixtures[0]), 'HTTP fixture is detected');
     assert.ok(!ports.includes(fixtures[1]), 'Non-HTTP service is excluded');
     assert.ok(!ports.includes(previewPort), 'Preview Lab cannot recursively detect itself');
-    assert.equal(new Set(ports).size, ports.length, 'Host aliases are deduplicated');
+    assert.equal(new Set(entries.map(entry => entry.url)).size, entries.length, 'Repeated host URLs are deduplicated');
+    assert.equal(entries.filter(entry => entry.port === fixtures[0]).length, 1, 'The IPv4 fixture cannot have duplicate aliases');
   }
 });

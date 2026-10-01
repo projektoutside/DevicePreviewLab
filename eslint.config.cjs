@@ -11,7 +11,7 @@ module.exports = [
     },
   },
   {
-    files: ['server.js', 'terminal-service.js', 'scripts/**/*.js', 'tests/**/*.js', 'eslint.config.cjs'],
+    files: ['server.js', 'local-server-discovery.js', 'terminal-service.js', 'scripts/**/*.js', 'tests/**/*.js', 'eslint.config.cjs'],
     languageOptions: { sourceType: 'commonjs', globals: globals.node },
   },
   {

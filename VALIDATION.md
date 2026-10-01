@@ -72,3 +72,34 @@ Validation for this follow-up:
 The existing .exe loads the updated app files; refresh the Lab page to apply
 this layout while keeping running terminal sessions. Task-owned test sessions
 and helpers were closed; the user's existing Lab and terminals stayed running.
+
+## Accurate local host discovery follow-up — 2026-10-01
+
+Replaced the two divergent scanners with one discovery service shared by Terminal
+Hall and both URL dropdowns. Windows TCP listener enumeration covers arbitrary
+ports, IPv4, IPv6, and locally bound interfaces, with no 512-listener truncation.
+HTTP and HTTPS responses are checked with bounded concurrency/body sizes.
+
+Known Dart VM/tooling, WebSocket-only, Chrome/Node debugging, generic unserved
+HTTP.sys, and Lab endpoints are filtered by protocol/response evidence. Normal
+apps in those same processes remain detectable. Protected apps, APIs, redirects,
+and missing-root applications are retained. Website titles label tabs, and full
+URLs identify sessions so separate IPv4/IPv6 hosts sharing a port do not collide.
+Scanner failures are reported rather than replaced by an unverified opaque
+browser scan. Manually entered custom hostnames/routes remain supported.
+
+Passed validation:
+
+- 16 automated tests (including 8 focused discovery tests), no skips.
+- Browser checks: preview 24, Terminal Hall 22, layout 27, discovery 17.
+- Three additional live checks verified closed fixture tabs disappear and the
+  actual Nikhom website remains while the pictured tooling ports are filtered.
+- Lint, JavaScript syntax, whitespace, both executable builds, normal/forced
+  native launcher fixture, and actual workstation process cleanup passed.
+- Inspected `output/playwright/verified-local-hosts.png`; the deliberately
+  protected fixture's HTTP 403 console message is expected. Final live tab strip
+  is saved in `output/playwright/local-hosts-filtered.png`.
+
+Native tests ran against the existing .exe with the updated application files.
+The current running backend requires a Lab restart to load the new scanner.
+The user's app/terminals were preserved; only task-owned fixtures were closed.

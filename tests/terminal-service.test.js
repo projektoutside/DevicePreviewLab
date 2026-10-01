@@ -150,6 +150,8 @@ test('real PTY preserves folder, output, reconnect history, resizing, shell exit
   const discovered = await api('servers');
   assert.equal(discovered.status, 200);
   assert.ok(discovered.body.servers.some(server => server.port === childPort), 'Discover servers on arbitrary listening ports');
+  const dropdownServers = await (await fetch(`${origin}/api/local-servers`)).json();
+  assert.ok(dropdownServers.servers.some(server => server.port === childPort), 'URL dropdowns must also discover arbitrary ports');
   assert.ok(!discovered.body.servers.some(server => server.port === Number(new URL(origin).port)), 'Exclude the Lab itself');
   assert.equal((await api('close', { id: another.id })).status, 200);
   const until = Date.now() + 7000;

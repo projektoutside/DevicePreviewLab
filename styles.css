@@ -1025,6 +1025,9 @@ body.focus-mode {
   font: inherit;
   font-size: 12px;
   white-space: nowrap;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
 .terminal-tab[aria-selected="true"] { background: #080e17; color: #68d6dc; border-bottom-color: #68d6dc; }

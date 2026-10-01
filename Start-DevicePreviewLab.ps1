@@ -172,7 +172,7 @@ function Normalize-TargetUrl([string]$RawUrl) {
 
 $appRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $serverScript = Join-Path $appRoot "server.js"
-$requiredFiles = @("server.js", "index.html", "app.js", "styles.css", "terminal-service.js", "terminal-hall.js", "Select-DevicePreviewFolder.exe")
+$requiredFiles = @("server.js", "index.html", "app.js", "styles.css", "local-server-discovery.js", "terminal-service.js", "terminal-hall.js", "Select-DevicePreviewFolder.exe")
 foreach ($requiredFile in $requiredFiles) {
   $requiredPath = Join-Path $appRoot $requiredFile
   if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {

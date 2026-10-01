@@ -37,9 +37,21 @@ Device Preview Lab auto-scans for running local servers on startup:
 - The All in One board has its own `Detect…` dropdown plus `Scan`. Picking a
   server fills the Server URL field so you only choose a device and add the tile.
 - Both URL fields also accept typed URLs with autocomplete from detected servers.
-- Local scans use `GET /api/local-servers` from the bundled Node server (fast
-  HTTP HEAD probes across common dev ports/hosts, excluding non-web services). On static hosting without that
-  API, the page falls back to a smaller browser-side probe.
+- On Windows, the bundled server enumerates every TCP listener and verifies
+  HTTP/HTTPS hosts on arbitrary ports, including IPv6 and locally bound network
+  interfaces. Terminal Hall and both URL dropdowns use the same scanner.
+- Debugging APIs, Dart tooling endpoints, WebSocket-only services, and other Lab
+  instances are filtered by their responses. Real websites running in the same
+  Dart/Node process remain available. Login-protected apps, APIs, redirects, and
+  apps with a missing root route are retained instead of being rejected by status.
+- Local HTTPS development certificates can be detected even when self-signed;
+  displaying those pages still requires the browser to trust their certificate.
+  Hosts requiring a custom virtual hostname or a specific route can be entered
+  manually. The scanner does not fetch redirects to external websites.
+- Scans share concurrent work, limit network concurrency and response size, and
+  do not launch, stop, or change discovered processes. Static hosting without the
+  local API has only a smaller browser-side common-port probe; full discovery
+  requires the Windows app.
 
 ## All in One Mode
 
@@ -68,8 +80,9 @@ your shells. You can return to a device preview and keep terminals running.
   keeping safety space below the last row. **Latest output** returns to the
   newest output and command prompt after browsing earlier lines.
 - Running local HTTP servers are detected across listening ports, including
-  ports outside the usual development-port list. Their tabs show a live preview
-  and process details. Detection refreshes every 15 seconds while Hall is visible.
+  HTTPS and ports outside the usual development-port list. Their tabs show the
+  website title when available, a live preview, and process details. Detection
+  refreshes every 15 seconds while Hall is visible.
 - An existing external terminal's console cannot be transferred into this app;
   its server tab is a preview, not a copy of its output or keyboard control.
   Start future servers from a Hall terminal to control their full console here.

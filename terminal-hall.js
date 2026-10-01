@@ -178,10 +178,11 @@
     scanning = true; refresh.disabled = true;
     try {
       const { servers } = await api('servers');
-      const ids = new Set(servers.map(server => `server-${server.port}`));
+      const serverId = server => `server-${encodeURIComponent(server.url)}`;
+      const ids = new Set(servers.map(serverId));
       for (const view of [...views.values()]) if (view.server && !ids.has(view.id)) removeView(view);
       for (const server of servers) {
-        const id = `server-${server.port}`;
+        const id = serverId(server);
         let view = views.get(id);
         if (!view) {
           view = createView(id, `Server :${server.port}`);
@@ -198,7 +199,8 @@
           view.element.append(info, note, view.frame);
         } else if (view.server.pid !== server.pid) view.frame.removeAttribute('src');
         view.server = server;
-        view.button.textContent = `${server.processName || 'Server'} :${server.port}`;
+        view.button.textContent = `${server.title || server.processName || 'Server'} :${server.port}`;
+        view.button.title = `${server.url}${server.title ? ` — ${server.title}` : ''}`;
         view.title.textContent = `${server.url}   ·   ${server.processName || 'HTTP server'}${server.pid ? `   ·   PID ${server.pid}` : ''}`;
       }
       if (!views.has(activeId)) activeId = views.keys().next().value || null;
