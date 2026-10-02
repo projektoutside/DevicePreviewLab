@@ -1,4 +1,5 @@
 async (page) => {
+  await page.setViewportSize({ width: 1600, height: 1000 });
   const failures = [];
   let checks = 0;
   const check = (condition, message) => { checks++; if (!condition) failures.push(message); };

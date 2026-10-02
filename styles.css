@@ -492,8 +492,9 @@ code {
   position: absolute;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
-  gap: 6px;
-  padding: 8px;
+  gap: 4px;
+  padding: 6px;
+  container-type: inline-size;
   border-radius: 20px;
   background: linear-gradient(180deg, var(--panel-strong), rgba(8, 19, 31, 0.95));
   border: 1px solid var(--line-strong);
@@ -510,12 +511,14 @@ code {
 
 .board-tile__header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  min-height: 26px;
+  flex-wrap: nowrap;
   cursor: grab;
-  padding: 2px;
+  padding: 0;
 }
 
 .board-tile--dragging .board-tile__header {
@@ -523,47 +526,52 @@ code {
 }
 
 .board-tile__title-wrap {
-  min-width: 0;
+  flex: 0 1 auto;
+  min-width: 20px;
 }
 
 .board-tile__title {
   margin: 0;
-  font-size: 12px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 240px;
-}
-
-.board-tile__meta {
-  margin: 5px 0 0;
-  color: var(--text-muted);
-  font-size: 10px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 300px;
 }
 
 .board-tile__controls {
   display: flex;
-  flex-wrap: wrap;
+  flex: none;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 }
 
 .board-tile__controls .device-card__viewport {
-  margin-right: 2px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 9px;
+  margin-right: 0;
+  white-space: nowrap;
 }
 
-.board-tile__controls .device-card__focus,
-.board-tile__controls .device-card__rotate,
-.board-tile__remove {
-  padding: 4px 6px;
+.board-tile__controls .board-tile__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 3px;
   border-radius: 6px;
   font-size: 11px;
 }
+
+.board-tile__action[hidden] { display: none; }
+.board-tile__controls svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.board-tile__controls .device-card__viewport > svg { display: none; }
+.board-tile__action:focus-visible { outline: 2px solid var(--accent-strong); outline-offset: 1px; }
 
 .board-tile__remove {
   border-color: rgba(255, 179, 164, 0.38);
@@ -698,6 +706,16 @@ body.board-dragging iframe {
 .zoom-controls button { min-height: 24px; padding: 2px 6px; border-radius: 5px; font-size: 11px; border: 1px solid var(--line-strong); background: var(--panel); color: var(--text); cursor: pointer; }
 .zoom-controls button:nth-child(2) { min-width: 46px; font-variant-numeric: tabular-nums; }
 .zoom-controls button:disabled { opacity: 0.4; cursor: default; }
+
+.board-tile__controls .zoom-controls button { padding: 2px 4px; font-size: 10px; }
+.board-tile__controls .zoom-controls button:nth-child(2) { min-width: 38px; }
+@container (max-width: 340px) {
+  .board-tile__controls .device-card__viewport > svg { display: block; }
+  .board-tile__dimensions { display: none; }
+  .board-tile__controls .board-tile__action { width: 22px; }
+  .board-tile__controls .zoom-controls button { width: 20px; padding: 2px 0; }
+  .board-tile__controls .zoom-controls button:nth-child(2) { width: 34px; min-width: 34px; }
+}
 
 @media (prefers-reduced-motion: no-preference) {
   .preview-zooming .device-shell { transition: transform 120ms ease-out; }

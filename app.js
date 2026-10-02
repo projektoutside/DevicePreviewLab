@@ -1266,15 +1266,14 @@ function updateBoardTileGeometry(tileId) {
   ref.canvas.style.setProperty('--frame-width', `${frame.width}px`);
   ref.canvas.style.setProperty('--frame-height', `${frame.height}px`);
   ref.canvas.style.setProperty('--frame-radius', `${preset.frameRadius}px`);
-  ref.viewport.textContent = `${frame.width} × ${frame.height}`;
+  ref.viewportDimensions.textContent = `${frame.width} × ${frame.height}`;
+  ref.viewport.title = `Viewport: ${frame.width} × ${frame.height}`;
+  ref.viewport.setAttribute('aria-label', ref.viewport.title);
   ref.iframe.title = `${preset.label} preview for ${ref.tile.name}`;
-  ref.meta.textContent = `${preset.label} • ${ref.tile.orientation} • ${ref.tile.url}`;
+  ref.title.title = `${ref.tile.name}\n${preset.label} • ${ref.tile.orientation}\n${ref.tile.url}`;
   ref.stage.setAttribute('aria-label', `Open ${ref.tile.name} in fullscreen focus mode`);
 
-  const rotateButton = ref.element.querySelector('.board-tile__controls .device-card__rotate');
-  if (rotateButton) {
-    rotateButton.hidden = !preset.rotatable;
-  }
+  ref.rotateButton.hidden = !preset.rotatable;
   ref.element.querySelector('.board-tile__resize')?.setAttribute('aria-label', `Resize ${ref.tile.name}`);
 }
 
@@ -1303,6 +1302,33 @@ function syncBoardTileScale(tileId) {
   applyPreviewScale(ref, finalScale, shellWidth, shellHeight);
 }
 
+function createTileIcon(name) {
+  const paths = {
+    focus: 'M8 3H3v5M16 3h5v5M21 16v5h-5M8 21H3v-5',
+    rotate: 'M5 4h9v16H5zM9 17h1M18 5a6 6 0 0 1 3 7M18 2v3h3',
+    reload: 'M20 7a8 8 0 1 0 0 10M20 2v5h-5',
+    url: 'M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-2 2M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l2-2',
+    open: 'M14 3h7v7M21 3l-11 11M10 3H3v18h18v-7',
+    remove: 'M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7',
+    viewport: 'M3 5h18v14H3zM8 9H6v2M16 15h2v-2',
+  };
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  path.setAttribute('d', paths[name]);
+  svg.appendChild(path);
+  return svg;
+}
+
+function setTileActionIcon(button, name, label, hint = label) {
+  button.classList.add('board-tile__action');
+  button.setAttribute('aria-label', label);
+  button.title = hint;
+  button.appendChild(createTileIcon(name));
+}
+
 function renderBoardTile(tile) {
   const preset = getPresetById(tile.deviceId);
   const element = document.createElement('article');
@@ -1317,19 +1343,20 @@ function renderBoardTile(tile) {
   title.className = 'board-tile__title';
   title.textContent = tile.name;
   title.title = tile.url;
-  const meta = document.createElement('p');
-  meta.className = 'board-tile__meta';
-  titleWrap.append(title, meta);
+  titleWrap.appendChild(title);
 
   const controls = document.createElement('div');
   controls.className = 'board-tile__controls';
   const viewport = document.createElement('span');
   viewport.className = 'device-card__viewport';
+  const viewportDimensions = document.createElement('span');
+  viewportDimensions.className = 'board-tile__dimensions';
+  viewport.append(createTileIcon('viewport'), viewportDimensions);
 
   const focusButton = document.createElement('button');
   focusButton.type = 'button';
   focusButton.className = 'device-card__focus';
-  focusButton.textContent = 'Focus';
+  setTileActionIcon(focusButton, 'focus', 'Focus', 'Focus this preview in fullscreen');
   focusButton.addEventListener('click', (event) => {
     event.stopPropagation();
     openFocusPreview(tile.deviceId, { fullscreen: true, boardTileId: tile.id });
@@ -1338,7 +1365,7 @@ function renderBoardTile(tile) {
   const rotateButton = document.createElement('button');
   rotateButton.type = 'button';
   rotateButton.className = 'device-card__rotate';
-  rotateButton.textContent = 'Rotate';
+  setTileActionIcon(rotateButton, 'rotate', 'Rotate', 'Rotate this device');
   rotateButton.addEventListener('click', (event) => {
     event.stopPropagation();
     rotateBoardTile(tile.id);
@@ -1347,8 +1374,7 @@ function renderBoardTile(tile) {
   const reloadButton = document.createElement('button');
   reloadButton.type = 'button';
   reloadButton.className = 'device-card__rotate';
-  reloadButton.textContent = 'Reload';
-  reloadButton.title = 'Fresh reload this tile';
+  setTileActionIcon(reloadButton, 'reload', 'Reload', 'Fresh reload this tile');
   reloadButton.addEventListener('click', (event) => {
     event.stopPropagation();
     navigateBoardTileFresh(tile.id);
@@ -1357,7 +1383,7 @@ function renderBoardTile(tile) {
   const removeButton = document.createElement('button');
   removeButton.type = 'button';
   removeButton.className = 'board-tile__remove';
-  removeButton.textContent = 'Remove';
+  setTileActionIcon(removeButton, 'remove', 'Remove', 'Remove this tile');
   removeButton.addEventListener('click', (event) => {
     event.stopPropagation();
     removeBoardTile(tile.id);
@@ -1373,8 +1399,7 @@ function renderBoardTile(tile) {
   const editButton = document.createElement('button');
   editButton.type = 'button';
   editButton.className = 'device-card__rotate';
-  editButton.textContent = 'URL';
-  editButton.title = 'Change this tile’s URL or device without losing its layout';
+  setTileActionIcon(editButton, 'url', 'URL', 'Change this tile’s URL or device without losing its layout');
   editButton.addEventListener('click', () => {
     state.boardEditingTileId = tile.id;
     elements.boardUrl.value = tile.url;
@@ -1387,8 +1412,7 @@ function renderBoardTile(tile) {
   const openButton = document.createElement('button');
   openButton.type = 'button';
   openButton.className = 'device-card__rotate';
-  openButton.textContent = 'Open';
-  openButton.title = 'Open this target directly to check whether the app itself is loading';
+  setTileActionIcon(openButton, 'open', 'Open', 'Open this target in a browser tab');
   openButton.addEventListener('click', () => window.open(createFreshPreviewUrl(tile.url), '_blank', 'noopener,noreferrer'));
   controls.append(viewport, zoomControls.element, focusButton, rotateButton, reloadButton, editButton, openButton, removeButton);
   header.append(titleWrap, controls);
@@ -1452,7 +1476,7 @@ function renderBoardTile(tile) {
   resizeHandle.addEventListener('pointerdown', (event) => beginBoardDrag(event, tile.id, 'resize'));
 
   stageObserver.observe(stage);
-  state.boardTileRefs.set(tile.id, { tile, preset, element, header, stage, shell, canvas, iframe, viewport, meta, title, surface, zoomControls });
+  state.boardTileRefs.set(tile.id, { tile, preset, element, header, stage, shell, canvas, iframe, viewport, viewportDimensions, title, rotateButton, surface, zoomControls });
   updateBoardTileGeometry(tile.id);
   navigateBoardTileFresh(tile.id);
 }

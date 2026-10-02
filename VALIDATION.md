@@ -194,3 +194,34 @@ precede that shutdown. Native lifecycle tests used their own ports and resources
 Windows native-window visual inspection is not claimed. Nikhom business/data
 workflows were outside this preview-loading fix. Task-owned test resources were
 closed when verification finished.
+
+## Compact server tile headers — 2026-10-01
+
+Replaced the three-line tile header with one 26-pixel row. SVG action icons keep
+the existing accessible names, keyboard behavior and tooltips. Device/orientation
+details and the full URL remain available on the server-name tooltip. Removed
+the stretched horizontal gap; reduced tile padding and the preview/header gap.
+Container queries adapt each tile independently down to its 280-pixel minimum,
+including existing/restored tiles and newly added servers. Narrow tiles show a
+viewport icon with dimension tooltip. A direct Rotate-button reference avoids
+accidentally hiding another action when the device changes.
+
+Validation passed: 25 automated tests, lint, syntax and whitespace checks, and
+108 browser checks (compact headers 18, preview 24, zoom 38, layout 28). Checks
+cover six tile widths from 280 to 900 pixels, long server names, independent
+device rotation, accessible icon controls, keyboard focus, target state retention,
+new/restored tiles and main-page overflow. The preview regression now establishes
+its own initial viewport rather than inheriting another check's narrow window.
+
+Visual self-assessment: candidate 2 accepted. The first candidate left a stretched
+gap between the name and controls; the targeted revision groups them together
+and distinguishes device rotation from reload. Final rubric scores: brief fidelity
+9, composition/spacing 9, detail/finish 9, usability 8. Material/lighting realism
+is not applicable to this existing desktop UI. Inspected
+`output/playwright/compact-tile-header.png` and the full workspace screenshot.
+Phone-size checks are browser emulation; physical mobile testing is not claimed.
+The existing executable loads these updated frontend files after a Lab refresh.
+Also confirmed the user's actual Flutter host at `http://127.0.0.1:53856/`
+renders under the 26-pixel header without page errors. Inspected
+`output/playwright/compact-tile-live-app.png`; the running user app and server
+were preserved while the isolated verification browser and helper were closed.

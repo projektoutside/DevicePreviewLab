@@ -62,6 +62,10 @@ grid:
 - Add any running `http://` or `https://` server URL and choose its device
   frame (Computer, Tablet, Galaxy S25, or iPhone Pro).
 - Drag a tile by its header to move it smoothly anywhere on the board.
+- Existing and new tiles use one compact header row. Focus, Rotate, Reload, URL,
+  Open and Remove use icons with tooltips and accessible names. Hover the server
+  name for the full URL and device details. Narrow tiles automatically condense
+  the viewport readout into a tooltip badge while keeping every action reachable.
 - Drag the glowing corner handle to resize the tile. Pointer updates are grouped
   into animation frames, and the last size is saved even if dragging is cancelled.
   Focus the handle and use arrow keys to resize by 10 pixels, or Shift + arrows
